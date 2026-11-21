@@ -222,3 +222,42 @@ body:has(#match-tools:not([hidden])) .setup > :not(#status) {
     radial-gradient(circle at 74% 32%, #ffccb0 0 12%, transparent 13%),
     linear-gradient(#212b47 15%, #635374 66%, #b97278);
 }
+
+body:has(#setup-view[data-selection="arena"]:not([hidden])) #game-panel { display: none; }
+
+body:has(#setup-view[data-selection="arena"]:not([hidden])) .setup {
+  grid-column: 1 / -1;
+  width: min(100%, 720px);
+  justify-self: center;
+}
+
+body:has(#setup-view:not([hidden])) .field-guide:not(:has(:target)) { display: none; }
+
+@media (max-width: 695px) {
+  body:has(#setup-view:not([hidden])) :is(#game-panel, .intro, #setup-moves) { display: none; }
+  body:has(#setup-view:not([hidden])) .shell { padding-block: 12px; }
+}
+
+#arena-fields .arena-select-preview { height: clamp(132px, 30svh, 330px); aspect-ratio: auto; }
+
+#arena-fields .arena-select-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 64px), 1fr)); }
+
+#arena-fields .arena-select-grid button { max-height: 95px; }
+
+#back-to-fighters { margin-block: 5px; }
+
+@media (max-height: 600px) and (min-width: 540px) {
+  #arena-fields .arena-select { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #arena-fields .arena-select-grid { align-content: start; }
+}
+
+@media (max-width: 695px), (max-height: 670px) {
+  #arena-fields .arena-select-preview { height: clamp(132px, 25svh, 210px); }
+  #arena-fields .arena-select-grid button { max-height: 74px; }
+  #setup-view[data-selection="arena"] .mode-picker { margin-bottom: 8px; }
+}
+
+@media (max-height: 670px) {
+  body:has(#setup-view:not([hidden])) :is(.intro, #setup-moves) { display: none; }
+  body:has(#setup-view:not([hidden])) .shell { padding-block: 12px; }
+}

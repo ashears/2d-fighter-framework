@@ -122,12 +122,39 @@ function setStatus(status: string) {
   byId('status').textContent = status;
 }
 
+let choosingArena = false;
+const chooseArena = byId('choose-arena');
+const backToFighters = byId('back-to-fighters');
+const setupHeading = byId('setup-heading');
+
+function updateSetupScreen() {
+  const arena = choosingArena || mode === 'online';
+  const fighters = !arena;
+  setupView.dataset.selection = arena ? 'arena' : fighters ? 'fighters' : 'campaign';
+  setupHeading.textContent = arena ? 'Choose arena' : 'Choose fighters';
+  byId('fighter-fields').hidden = arena;
+  byId('arena-fields').hidden = !arena;
+  chooseArena.hidden = !fighters;
+  backToFighters.hidden = !arena || mode === 'online';
+  startButton.hidden = !arena || (mode === 'online' && !roomsAvailable);
+  byId('setup-moves').hidden = !fighters;
+}
+
+function changeSetupScreen(arena: boolean) {
+  choosingArena = arena;
+  updateSetupScreen();
+  window.scrollTo(0, 0);
+  if (arena) setupHeading.focus({ preventScroll: true });
+  else chooseArena.focus({ preventScroll: true });
+}
+
+chooseArena.addEventListener('click', () => changeSetupScreen(true));
+backToFighters.addEventListener('click', () => changeSetupScreen(false));
+
 function updateMode() {
   for (const button of modeButtons) button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
-  byId('fighter-fields').hidden = mode === 'online';
+  updateSetupScreen();
   byId('join-form').hidden = mode !== 'online' || !roomsAvailable;
-  startButton.hidden = mode === 'online' && !roomsAvailable;
-  byId('setup-moves').hidden = mode === 'online';
   updateSetupPicker();
   startButton.replaceChildren(document.createTextNode(
     mode === 'online' ? 'Copy invite link' : mode === 'training' ? 'Start training' : 'Start fight',
@@ -301,7 +328,7 @@ function startFight(
 function stopFight() {
   backToSetup(!!room);
   setStatus('');
-  startButton.focus({ preventScroll: true });
+  (startButton.hidden ? chooseArena : startButton).focus({ preventScroll: true });
 }
 
 function finish(snapshot: Snapshot) {
@@ -532,6 +559,7 @@ for (const button of modeButtons) {
   if (button.dataset.mode === 'online' && !roomsAvailable) button.disabled = true;
   button.addEventListener('click', () => {
     mode = button.dataset.mode as Mode;
+    choosingArena = false;
     if (mode !== 'online' && !room) connection.close();
     setStatus('');
     updateMode();
@@ -577,6 +605,7 @@ async function startPairing(kind: 'invite' | 'reply', createCode: () => Promise<
 
 byId('setup-form').addEventListener('submit', (event) => {
   event.preventDefault();
+  if (startButton.hidden) return;
   const selection = readSetup();
   if (mode === 'online') {
     const link = startPairing('invite', () => connection.invite(selection.stage, selection.rule));

@@ -11,7 +11,7 @@ function captureErrors(page) {
 
 async function open(page) {
   await page.goto('./');
-  await expect(page.locator('#viewport canvas')).toBeVisible();
+  await expect(page.locator('#viewport canvas')).toBeAttached();
 }
 
 async function stock(page) {
@@ -32,6 +32,7 @@ test('production preview, CPU mode, training hitboxes, and desktop layout', asyn
   await open(page);
   await expect(page.getByRole('heading', { name: 'Aftershift.' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('desktop.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Choose arena' }).click();
   await page.getByRole('button', { name: 'Start fight' }).click();
   await expect(page.locator('#session-label')).toHaveText('CPU fight');
   await expect(page.locator('.masthead')).toBeHidden();
@@ -51,9 +52,10 @@ test('production preview, CPU mode, training hitboxes, and desktop layout', asyn
   await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Exit fullscreen', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'End session' }).click();
-  await expect(page.locator('#controls')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose arena' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
   await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose arena' }).click();
   await page.getByRole('button', { name: 'Start training' }).click();
   await expect(page.locator('#hud .clock')).toHaveText('∞');
   await page.getByRole('button', { name: 'Show hitboxes' }).click();
@@ -73,6 +75,7 @@ test('local stock match uses both keyboard mappings, ends, and replays after rel
   await page.clock.install();
   await open(page);
   await page.getByRole('button', { name: 'Local', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose arena' }).click();
   await stock(page);
   await page.getByRole('button', { name: 'Start fight' }).click();
   await expect(page.locator('#session-label')).toHaveText('Local versus');
@@ -99,6 +102,11 @@ test('solo touch inputs run a move and the mobile layout fits the viewport', asy
     await page.clock.install();
     await open(page);
     await page.getByRole('button', { name: 'Training', exact: true }).tap();
+    await expect(page.getByRole('button', { name: 'Choose arena' })).toBeInViewport({ ratio: 1 });
+    await page.getByRole('button', { name: 'Choose arena' }).tap();
+    await expect(page.locator('#fighter-fields')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Start training' })).toBeInViewport({ ratio: 1 });
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await page.getByRole('button', { name: 'Start training' }).tap();
     await expect(page.getByRole('button', { name: 'Move left' })).toBeVisible();
     await page.getByRole('button', { name: 'Light attack' }).tap();
@@ -163,7 +171,7 @@ test('a shared invite opens the lobby in a fresh browser, then players can play,
     await expect(guest.locator('#session-label')).toHaveText('Online · P2');
     await guest.getByRole('button', { name: 'Leave room', exact: true }).click();
     await expect(host.getByRole('status')).toHaveText('Your opponent left the room.');
-    await expect(host.getByRole('heading', { name: 'Match setup' })).toBeVisible();
+    await expect(host.getByRole('heading', { name: 'Choose arena' })).toBeVisible();
     await expect(host.getByRole('button', { name: 'Replay last match' })).toBeEnabled();
     expect(errors).toEqual([[], []]);
   } finally {
@@ -198,6 +206,7 @@ test('health mode completes two rounds and clears the intermission HUD', async (
   await page.clock.install();
   await open(page);
   await page.getByRole('button', { name: 'Local', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose arena' }).click();
   const arena = page.getByRole('group', { name: 'Arena', exact: true });
   const overpass = arena.getByRole('button', { name: 'Skyline Overpass', exact: true });
   await overpass.hover();
@@ -224,6 +233,7 @@ test('stock training respawns after a stock loss and restarts after the final st
   await page.clock.install();
   await open(page);
   await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose arena' }).click();
   await stock(page);
   await page.getByRole('button', { name: 'Start training' }).click();
   await page.getByRole('button', { name: 'Show hitboxes' }).click();

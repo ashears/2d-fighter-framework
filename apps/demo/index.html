@@ -60,7 +60,7 @@
       </section>
       <aside class="setup" aria-label="Match setup">
         <div id="setup-view">
-          <h2>Match setup</h2>
+          <h2 id="setup-heading" tabindex="-1">Choose fighters</h2>
           <form id="setup-form">
             <div class="mode-picker" role="group" aria-label="Play mode">
               <button type="button" data-mode="cpu" aria-pressed="true">CPU</button>
@@ -69,11 +69,13 @@
               <button type="button" data-mode="online" aria-pressed="false">Online</button>
             </div>
             <div id="fighter-fields"></div>
-            <div class="pair-fields">
+            <div id="arena-fields" class="pair-fields" hidden>
               <label>Rules<select id="rules"><option value="health">Health rounds</option><option value="stock">Three stocks</option></select></label>
               <div id="stage"></div>
             </div>
             <p class="hint" id="setup-hint"></p>
+            <button class="primary full" id="choose-arena" type="button">Choose arena</button>
+            <button class="quiet" id="back-to-fighters" type="button" hidden>Back to fighters</button>
             <button class="primary full" id="start" type="submit">Start fight <span aria-hidden="true">↗</span></button>
           </form>
           <form id="join-form" class="join-form" hidden>
