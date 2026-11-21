@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open the Vite URL. For private rooms, also run `npm run rooms` and open the demo in two browser sessions. Choose **Online** on both clients. One creates a room and shares its eight-character code. Each selects a fighter and presses **Ready**. Both players must request a rematch. Each online player uses the player-one bindings.
+Open the Vite URL in each browser. Choose **Online**. The host creates an invite, the guest pastes it and generates a reply, and the host pastes that reply to connect. Each online player uses the player-one bindings.
 
 | Action | Player one | Local player two |
 |---|---|---|
@@ -36,7 +36,13 @@ See [the package quickstart](packages/core/README.md) for a complete match defin
 
 Health matches end after two round wins or three rounds, with timeout decisions based on remaining health percentage. Stock matches use three stocks, damage-scaled knockback, and protected respawns. A stock timeout compares stock count first and then accumulated damage. Exact ties draw.
 
-## Host private rooms
+## Direct rooms on static sites
+
+`@ashears/fighter-direct` runs the room in the host browser. Pass the same game registry you would use with the relay into `DirectRoomConnection`. Its `invite`, `reply`, and `accept` methods handle the manual handshake. The host runs the simulation and sends snapshots over an ordered WebRTC data channel. The demo can be built and deployed to any static HTTPS host without room endpoint variables.
+
+The browser uses local network candidates and no STUN, TURN, or signaling service. Test on the same Wi-Fi first. Guest Wi-Fi isolation and NAT on different networks can prevent a direct connection. Keep the host page open while playing.
+
+## Optional hosted relay
 
 `createRoomServer({ game, allowedOrigins })` in the relay workspace accepts a trusted content registry of fighter, stage, and rule IDs, a function returning the match definition and rule policy for each selection, and an optional `supports(stage, rule)` compatibility check. Run the reference server with `npm run rooms`. To reuse the server in another project, install the matching core and relay tarballs together from the directory where you saved them.
 
@@ -61,4 +67,4 @@ npm run test:browser
 npm run release:local
 ```
 
-The tests cover headless combat, real WebSocket clients, Phaser's production browser build, touch input, a completed two-browser private match with added latency, and identical replay state and events in Node and Chromium. The release command creates the versioned core and relay tarballs, static demo archive, and SHA-256 checksums under `artifacts/`. CI runs the same checks and uploads all three archives.
+The tests cover headless combat, real WebSocket relay clients, direct WebRTC rooms, Phaser's production browser build, touch input, a completed two-browser private match with added latency, and identical replay state and events in Node and Chromium. The release command creates the versioned core, relay, and direct-room tarballs, static demo archive, and SHA-256 checksums under `artifacts/`. CI runs the same checks and uploads the archives.

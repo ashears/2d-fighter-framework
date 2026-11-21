@@ -10,11 +10,12 @@ const consumer = mkdtempSync(join(tmpdir(), 'fighter-consumer-'));
 try {
   const { path, pack } = packWorkspace('packages/core', consumer);
   const relay = packWorkspace('packages/relay', consumer);
+  const direct = packWorkspace('packages/direct', consumer);
   const files = pack.files.map((file) => file.path);
   for (const asset of ['dist/index.js', 'dist/index.d.ts', 'README.md', 'LICENSE']) assert(files.includes(asset), asset);
   assert(files.every((file) => !file.includes('tsbuildinfo')));
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'smoke-consumer', private: true, type: 'module' }));
-  execFileSync(npm, ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--cache', join(consumer, '.npm-cache'), path, relay.path], { cwd: consumer, stdio: 'inherit' });
+  execFileSync(npm, ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--cache', join(consumer, '.npm-cache'), path, relay.path, direct.path], { cwd: consumer, stdio: 'inherit' });
   const manifestPath = join(consumer, 'node_modules', '@ashears', '2d-fighter-framework', 'package.json');
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   assert.equal(Object.keys(manifest.dependencies ?? {}).length, 0);
@@ -22,6 +23,7 @@ try {
 import { Button, createMatch, healthRules, TICK_RATE } from '@ashears/2d-fighter-framework';
 import type { FighterDefinition, MatchDefinition } from '@ashears/2d-fighter-framework';
 import { createRoomServer } from '@ashears/fighter-relay';
+import { DirectRoomConnection, supportsDirectRooms } from '@ashears/fighter-direct';
 import type { RoomGame } from '@ashears/fighter-relay';
 import { decodeClientMessage, encodeMessage } from '@ashears/fighter-relay/protocol';
 import type { ClientMessage } from '@ashears/fighter-relay/protocol';
@@ -53,6 +55,9 @@ const game: RoomGame<'sample', 'test', 'health', null> = {
 };
 const message: ClientMessage = { type: 'create', stage: 'test', rule: 'health' };
 if (decodeClientMessage(encodeMessage(message))?.type !== 'create') throw new Error('Invalid packed room protocol');
+const direct = new DirectRoomConnection({ id: 'sample', ...game }, () => {}, () => {});
+if (supportsDirectRooms()) throw new Error('Expected the browser-only capability to be absent in Node');
+direct.close();
 const relay = createRoomServer({ game });
 try {
   const { port } = await relay.listen(0);
@@ -61,7 +66,7 @@ try {
 } finally {
   await relay.close();
 }
-console.log('Packed core and relay ran successfully in a clean consumer.');
+console.log('Packed core, direct client, and relay ran successfully in a clean consumer.');
 `);
   const tsc = fileURLToPath(new URL('node_modules/typescript/bin/tsc', root));
   const typeRoots = fileURLToPath(new URL('node_modules/@types', root));

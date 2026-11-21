@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "composite": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.cache/build.tsbuildinfo"
+  },
+  "references": [{ "path": "../core" }, { "path": "../relay" }],
+  "include": ["src"]
+}

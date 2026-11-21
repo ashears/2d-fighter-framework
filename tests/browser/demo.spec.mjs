@@ -1,4 +1,3 @@
-import { setTimeout } from 'node:timers';
 import { fileURLToPath } from 'node:url';
 import { devices, expect, test } from '@playwright/test';
 import { createMatch, createRecording, healthRules, playRecording, snapshotChecksum } from '@ashears/2d-fighter-framework';
@@ -99,31 +98,32 @@ test('solo touch inputs run a move and the mobile layout fits the viewport', asy
   }
 });
 
-test('two isolated browser clients play a complete private stock match with latency, rematch and leave', async ({ browser }) => {
+test('two isolated browsers exchange WebRTC codes, play, rematch and leave', async ({ browser }) => {
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
   try {
     const host = await hostContext.newPage();
     const guest = await guestContext.newPage();
     const errors = [captureErrors(host), captureErrors(guest)];
-    await guest.routeWebSocket(`ws://127.0.0.1:${process.env.AFTERSHIFT_TEST_ROOM_PORT ?? '8787'}/rooms`, (route) => {
-      const upstream = route.connectToServer();
-      let active = true;
-      route.onClose((code, reason) => { active = false; upstream.close({ code, reason }); });
-      upstream.onClose((code, reason) => { active = false; route.close({ code, reason }); });
-      route.onMessage((message) => setTimeout(() => { if (active) upstream.send(message); }, 85));
-      upstream.onMessage((message) => setTimeout(() => { if (active) route.send(message); }, 85));
-    });
     await Promise.all([open(host), open(guest)]);
     await Promise.all([host, guest].map((page) => page.getByRole('button', { name: 'Online', exact: true }).click()));
     await stock(host);
-    await host.getByRole('button', { name: 'Create private room' }).click();
-    await expect(host.getByRole('heading', { name: 'Private room' })).toBeVisible();
-    const code = await host.locator('#code-display').textContent();
-    expect(code).toMatch(/^[A-Z2-9]{8}$/);
-    await guest.getByLabel('Room code').fill(code);
-    await guest.getByRole('button', { name: 'Join room' }).click();
-    await expect(guest.getByRole('heading', { name: 'Private room' })).toBeVisible();
+    const externalSockets = [];
+    for (const page of [host, guest]) page.on('websocket', ({ url }) => externalSockets.push(url));
+    await host.getByRole('button', { name: 'Create invite' }).click();
+    await expect(host.locator('#pairing-code')).toHaveValue(/^FIGHT1\./);
+    const invite = await host.locator('#pairing-code').inputValue();
+    await guest.locator('#invite-input').fill(invite);
+    await guest.getByRole('button', { name: 'Generate reply' }).click();
+    await expect(guest.locator('#pairing-code')).toHaveValue(/^FIGHT1\./);
+    const reply = await guest.locator('#pairing-code').inputValue();
+    await host.locator('#reply-input').fill(invite);
+    await host.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(host.getByRole('status')).toContainText('full reply code');
+    await host.locator('#reply-input').fill(reply);
+    await host.getByRole('button', { name: 'Connect', exact: true }).click();
+    for (const page of [host, guest]) await expect(page.getByRole('heading', { name: 'Private room' })).toBeVisible();
+    expect(externalSockets).toEqual([]);
     await Promise.all([
       host.getByRole('combobox', { name: 'Your fighter' }).selectOption('forge'),
       guest.getByRole('combobox', { name: 'Your fighter' }).selectOption('relay'),

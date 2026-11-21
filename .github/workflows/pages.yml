@@ -28,8 +28,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-        env:
-          VITE_ROOM_URL: ${{ vars.AFTERSHIFT_ROOM_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/demo/dist

@@ -9,9 +9,10 @@ const destination = fileURLToPath(new URL('artifacts/', root));
 mkdirSync(destination, { recursive: true });
 const core = packWorkspace('packages/core', destination);
 const relay = packWorkspace('packages/relay', destination);
+const direct = packWorkspace('packages/direct', destination);
 const demo = join(destination, `aftershift-demo-${core.pack.version}.tar.gz`);
 execFileSync('tar', ['-czf', demo, '-C', fileURLToPath(new URL('apps/demo/dist', root)), '.'], { stdio: 'inherit' });
-const checksums = [core.path, relay.path, demo].map((file) => {
+const checksums = [core.path, relay.path, direct.path, demo].map((file) => {
   const sha256 = createHash('sha256').update(readFileSync(file)).digest('hex');
   return `${sha256}  ${basename(file)}`;
 });

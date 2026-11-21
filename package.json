@@ -6,7 +6,7 @@
   "workspaces": ["packages/*", "apps/*"],
   "engines": { "node": ">=22" },
   "scripts": {
-    "build:packages": "tsc -b packages/core packages/relay packages/reference",
+    "build:packages": "tsc -b packages/core packages/relay packages/reference packages/direct",
     "typecheck": "npm run build:packages && tsc -p apps/demo --noEmit && node --check packages/relay/server.mjs",
     "dev": "npm run build:packages && npm run dev -w @ashears/fighter-demo",
     "rooms": "npm run build:packages && npm run rooms -w @ashears/fighter-demo",

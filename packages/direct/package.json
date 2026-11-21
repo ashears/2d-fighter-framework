@@ -1,0 +1,13 @@
+{
+  "name": "@ashears/fighter-direct",
+  "version": "0.1.0",
+  "description": "Serverless browser rooms for the 2D Fighter Framework",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist/*.js", "dist/*.d.ts"],
+  "dependencies": {
+    "@ashears/2d-fighter-framework": "0.2.0",
+    "@ashears/fighter-relay": "0.2.0"
+  }
+}
