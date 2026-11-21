@@ -1,4 +1,4 @@
-import type { Box, Impact, Json, MatchDefinition, MoveSlot, Point, ReadonlyDeep } from './types.js';
+import type { Box, Impact, Json, MatchDefinition, MoveSlot, Point, ProjectileDefinition, ReadonlyDeep } from './types.js';
 
 export const seats = [0, 1] as const;
 export const slots: readonly MoveSlot[] = ['light', 'heavy', 'special'];
@@ -84,6 +84,31 @@ function impact(value: ReadonlyDeep<Impact>, label: string) {
   point(value.knockback, label);
 }
 
+function projectile(value: ReadonlyDeep<ProjectileDefinition>, label: string) {
+  box(value.box, label);
+  point(value.velocity, label);
+  if (value.chargedVelocity) point(value.chargedVelocity, label);
+  finite(value.gravity ?? 0, label);
+  nonnegative(value.lifetime, label);
+  nonnegative(value.armTicks ?? 0, label);
+  requireValue(value.lifetime > (value.armTicks ?? 0), label);
+  if (value.rehitTicks !== undefined) {
+    nonnegative(value.rehitTicks, label);
+    requireValue(value.rehitTicks > 0, label);
+  }
+  if (value.motion?.type === 'orbit') {
+    positive(value.motion.radius.x, label);
+    positive(value.motion.radius.y, label);
+    nonnegative(value.motion.period, label);
+    requireValue(value.motion.period >= 4, label);
+    if (value.motion.trackX !== undefined) {
+      finite(value.motion.trackX, label);
+      requireValue(value.motion.trackX >= 0 && value.motion.trackX <= 1, label);
+    }
+  } else requireValue(!value.motion || value.motion.type === 'ground', label);
+  impact(value.impact, label);
+}
+
 export function validateDefinition(definition: ReadonlyDeep<MatchDefinition>) {
   nonnegative(definition.seed, 'Invalid match seed');
   requireValue(definition.seed <= 0xffffffff, 'Match seed must fit in 32 bits');
@@ -127,8 +152,11 @@ export function validateDefinition(definition: ReadonlyDeep<MatchDefinition>) {
       nonnegative(move.startup, moveLabel);
       nonnegative(move.active, moveLabel);
       nonnegative(move.recovery, moveLabel);
+      nonnegative(move.chargeTicks ?? 0, moveLabel);
+      nonnegative(move.cooldownTicks ?? 0, moveLabel);
       const total = move.startup + move.active + move.recovery;
       requireValue(total > 0 && Number.isSafeInteger(total), moveLabel);
+      requireValue(move.actions.filter((action) => action.type === 'hitbox' && action.followup).length <= 1, moveLabel);
       for (const action of move.actions) {
         nonnegative(action.frame, moveLabel);
         requireValue(action.frame < total, moveLabel);
@@ -138,19 +166,30 @@ export function validateDefinition(definition: ReadonlyDeep<MatchDefinition>) {
             requireValue(action.duration > 0 && action.frame >= move.startup && action.frame + action.duration <= move.startup + move.active, moveLabel);
             box(action.box, moveLabel);
             impact(action.impact, moveLabel);
+            if (action.followup) {
+              nonnegative(action.followup.delay, moveLabel);
+              requireValue(action.followup.delay > 0 && action.frame + action.duration - 1 + action.followup.delay < total, moveLabel);
+              impact(action.followup.impact, moveLabel);
+            }
             break;
           case 'impulse':
             point(action.velocity, moveLabel);
+            if (action.chargedVelocity) point(action.chargedVelocity, moveLabel);
             break;
           case 'projectile':
             requireValue(action.frame >= move.startup && action.frame < move.startup + move.active, moveLabel);
             point(action.offset, moveLabel);
-            box(action.projectile.box, moveLabel);
-            point(action.projectile.velocity, moveLabel);
-            finite(action.projectile.gravity ?? 0, moveLabel);
-            nonnegative(action.projectile.lifetime, moveLabel);
-            requireValue(action.projectile.lifetime > 0, moveLabel);
-            impact(action.projectile.impact, moveLabel);
+            projectile(action.projectile, moveLabel);
+            if (action.variants) {
+              let totalWeight = 0;
+              for (const option of action.variants) {
+                nonnegative(option.weight, moveLabel);
+                requireValue(option.weight > 0, moveLabel);
+                totalWeight += option.weight;
+                projectile(option.projectile, moveLabel);
+              }
+              requireValue(totalWeight > 0 && totalWeight <= 0xffffffff, moveLabel);
+            }
             break;
           default:
             throw new RangeError(moveLabel);

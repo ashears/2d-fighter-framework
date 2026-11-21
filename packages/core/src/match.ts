@@ -1,6 +1,6 @@
 import { applyMoveVelocity, getProjectileDefinition, resolveCombat } from './combat.js';
 import { canonical, copy, copyRuleState, fingerprint, freeze, nextRandom, nonnegative, requireValue, seats, slots, validateDefinition } from './data.js';
-import { advanceFighter, moveFighter, separateFighters } from './movement.js';
+import { advanceFighter, advanceMove, moveFighter, separateFighters } from './movement.js';
 import { SNAPSHOT_VERSION, isInputFrame } from './types.js';
 import type { FighterState, GameEvent, InputFrame, Json, MatchDefinition, MatchState, Pair, Point, ReadonlyDeep, Recording, RuleSet, Seat, Snapshot } from './types.js';
 
@@ -62,12 +62,34 @@ function validateSnapshot<State extends Json>(
       requireValue(slots.includes(fighter.bufferedMove.slot), 'Invalid buffered attack');
       nonnegative(fighter.bufferedMove.until, 'Invalid buffered attack');
     }
+    for (const [slot, until] of Object.entries(fighter.cooldowns ?? {})) {
+      requireValue(slots.some((item) => item === slot && stats.moves[item].cooldownTicks), 'Unknown move cooldown');
+      nonnegative(until, 'Invalid move cooldown');
+    }
     if (fighter.move) {
       const move = stats.moves[fighter.move.slot];
       requireValue(move && (fighter.move.facing === -1 || fighter.move.facing === 1) && Array.isArray(fighter.move.connectedActions), 'Invalid snapshot move');
       nonnegative(fighter.move.frame, 'Invalid move frame');
       requireValue(fighter.move.frame < move.startup + move.active + move.recovery
         && fighter.move.connectedActions.every((index) => move.actions[index]?.type === 'hitbox'), 'Invalid move frame or action');
+      const { charge, followup, landedAt } = fighter.move;
+      requireValue(!!charge === !!move.chargeTicks, 'Missing move charge state');
+      if (charge) {
+        nonnegative(charge.held, 'Invalid move charge');
+        requireValue(charge.held <= move.chargeTicks! && typeof charge.released === 'boolean'
+          && (charge.released || (fighter.move.frame === 0 && charge.held < move.chargeTicks!)), 'Invalid move charge');
+      }
+      if (followup) {
+        const action = move.actions[followup.action];
+        nonnegative(followup.frame, 'Invalid follow-up frame');
+        requireValue(action?.type === 'hitbox' && action.followup && fighter.move.connectedActions.includes(followup.action)
+          && followup.frame > fighter.move.frame && followup.frame < move.startup + move.active + move.recovery, 'Invalid follow-up');
+      }
+      if (landedAt !== undefined) {
+        nonnegative(landedAt, 'Invalid landing frame');
+        requireValue(landedAt <= fighter.move.frame && move.actions.some((action) => action.type === 'hitbox'
+          && action.onLanding && landedAt >= action.frame && landedAt < action.frame + action.duration), 'Invalid landing frame');
+      }
     }
   }
   const ids = new Set<number>();
@@ -77,6 +99,15 @@ function validateSnapshot<State extends Json>(
     nonnegative(projectile.id, 'Invalid projectile ID');
     nonnegative(projectile.remaining, 'Invalid projectile lifetime');
     const definitionOfProjectile = getProjectileDefinition(definition, projectile);
+    const { motion, rehitTicks } = definitionOfProjectile;
+    requireValue(motion?.type === 'orbit' ? projectile.orbitCenter && Number.isFinite(projectile.orbitCenter.x)
+      && Number.isFinite(projectile.orbitCenter.y) : projectile.orbitCenter === undefined, 'Invalid orbit center');
+    requireValue(motion?.type === 'ground' ? projectile.ground === null || definition.stage.surfaces.some(({ id }) => id === projectile.ground)
+      : projectile.ground === undefined, 'Invalid projectile surface');
+    if (projectile.nextHitTick !== undefined) {
+      requireValue(rehitTicks, 'Invalid repeated contact');
+      nonnegative(projectile.nextHitTick, 'Invalid projectile contact tick');
+    }
     requireValue(!ids.has(projectile.id) && projectile.id < state.nextProjectile && projectile.remaining > 0
       && projectile.remaining <= definitionOfProjectile.lifetime
       && [projectile.position.x, projectile.position.y, projectile.velocity.x, projectile.velocity.y].every(Number.isFinite), 'Invalid projectile state');
@@ -149,10 +180,7 @@ export function createMatch<State extends Json>(
       } else if (actor.invulnerable > 0) {
         actor.invulnerable--;
       }
-      if (actor.move) {
-        const move = config.fighters[seat].moves[actor.move.slot];
-        if (++actor.move.frame >= move.startup + move.active + move.recovery) actor.move = null;
-      }
+      advanceMove(actor, config.fighters[seat], inputs[seat]);
       const opponent = state.fighters[seat === 0 ? 1 : 0];
       advanceFighter(actor, opponent, config.fighters[seat], config.stage, inputs[seat], tick, config.inputBufferTicks ?? defaultBuffer, seat, events);
       if (actor.stun > 0) actor.stun--;

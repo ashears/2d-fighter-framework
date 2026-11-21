@@ -35,6 +35,8 @@ export interface Impact {
   guardDamage: number;
   hitstun: number;
   knockback: Point;
+  unblockable?: boolean;
+  knockbackFromContact?: boolean;
 }
 
 export interface ProjectileDefinition {
@@ -43,12 +45,21 @@ export interface ProjectileDefinition {
   gravity?: number;
   lifetime: number;
   impact: Impact;
+  /** Optional identifier for the game's renderer. */
+  appearance?: string;
+  motion?: { type: 'ground' } | { type: 'orbit'; radius: Point; period: number; trackX?: number };
+  armTicks?: number;
+  /** If present, persist after contact and wait this many ticks before hitting again. */
+  rehitTicks?: number;
+  chargedVelocity?: Point;
 }
 
 export type MoveAction =
-  | { type: 'hitbox'; frame: number; duration: number; box: Box; impact: Impact }
-  | { type: 'impulse'; frame: number; velocity: Point }
-  | { type: 'projectile'; frame: number; offset: Point; projectile: ProjectileDefinition };
+  | { type: 'hitbox'; frame: number; duration: number; box: Box; impact: Impact;
+    onLanding?: boolean; followup?: { delay: number; impact: Impact } }
+  | { type: 'impulse'; frame: number; velocity: Point; chargedVelocity?: Point }
+  | { type: 'projectile'; frame: number; offset: Point; projectile: ProjectileDefinition;
+    variants?: { weight: number; projectile: ProjectileDefinition }[] };
 
 export interface MoveDefinition {
   name: string;
@@ -56,6 +67,10 @@ export interface MoveDefinition {
   active: number;
   recovery: number;
   actions: MoveAction[];
+  /** Freeze frame progression until the player releases the attack or reaches this limit. */
+  chargeTicks?: number;
+  /** Minimum ticks between starts of this move. */
+  cooldownTicks?: number;
 }
 
 export interface FighterDefinition {
@@ -87,6 +102,9 @@ export interface ActiveMove {
   frame: number;
   facing: Facing;
   connectedActions: number[];
+  charge?: { held: number; released: boolean };
+  followup?: { action: number; frame: number };
+  landedAt?: number;
 }
 
 export interface FighterState {
@@ -107,6 +125,7 @@ export interface FighterState {
   invulnerable: number;
   stocks: number;
   move: ActiveMove | null;
+  cooldowns?: Partial<Record<MoveSlot, number>>;
   bufferedMove: { slot: MoveSlot; until: number } | null;
   bufferedJump: number | null;
   previousInput: InputFrame;
@@ -121,6 +140,10 @@ export interface ProjectileState {
   velocity: Point;
   facing: Facing;
   remaining: number;
+  variant?: number;
+  ground?: string | null;
+  orbitCenter?: Point;
+  nextHitTick?: number;
 }
 
 /** Hooks receive the completed gameplay state for this tick and choose its consequences. */

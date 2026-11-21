@@ -1,6 +1,6 @@
 {
   "name": "@ashears/2d-fighter-framework",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Deterministic two-player combat simulation for 2D fighters",
   "license": "MIT",
   "type": "module",

@@ -24,7 +24,7 @@ Touch controls appear on devices with a coarse pointer in single-player, trainin
 
 ## Use the core in another game
 
-Run `npm run release:local` and install the versioned `ashears-2d-fighter-framework-0.2.0.tgz` from the consuming project. Commit the tarball at a stable relative path in that project if it must install reproducibly in CI. The tarball has no runtime dependencies and includes ESM and TypeScript declarations.
+Run `npm run release:local` and install the versioned `ashears-2d-fighter-framework-0.3.0.tgz` from the consuming project. Commit the tarball at a stable relative path in that project if it must install reproducibly in CI. The tarball has no runtime dependencies and includes ESM and TypeScript declarations.
 
 See [the package quickstart](packages/core/README.md) for a complete match definition. The reference game and room server import the same public package.
 
@@ -47,12 +47,12 @@ The browser uses local network candidates and no STUN, TURN, or signaling servic
 `createRoomServer({ game, allowedOrigins })` in the relay workspace accepts a trusted content registry of fighter, stage, and rule IDs, a function returning the match definition and rule policy for each selection, and an optional `supports(stage, rule)` compatibility check. Run the reference server with `npm run rooms`. To reuse the server in another project, install the matching core and relay tarballs together from the directory where you saved them.
 
 ```sh
-npm install ./ashears-2d-fighter-framework-0.2.0.tgz ./ashears-fighter-relay-0.2.0.tgz
+npm install ./ashears-2d-fighter-framework-0.3.0.tgz ./ashears-fighter-relay-0.3.0.tgz
 ```
 
 Import `createRoomServer` from `@ashears/fighter-relay` and the protocol types and codecs from `@ashears/fighter-relay/protocol`. The server owns rules and combat, accepts sequenced inputs on `/rooms`, and sends 20 snapshots per second with the latest applied input sequences and intervening events. The browser interpolates positions with about 105 ms of playback delay.
 
-For a hosted demo, build with `VITE_ROOM_URL=wss://rooms.example.com/rooms npm run build` and deploy `apps/demo/dist/` to a static host. Run the relay as a persistent Node process with `HOST=0.0.0.0`, `PORT`, and `FIGHTER_ROOM_ORIGINS=https://your-demo.example.com` behind a TLS reverse proxy that forwards WebSocket upgrades. `GET /health` is a health check. Build the client and server from the same release. Room protocol v2 requires the 0.2.0 release on both ends. Offline modes work without a relay.
+For a hosted demo, build with `VITE_ROOM_URL=wss://rooms.example.com/rooms npm run build` and deploy `apps/demo/dist/` to a static host. Run the relay as a persistent Node process with `HOST=0.0.0.0`, `PORT`, and `FIGHTER_ROOM_ORIGINS=https://your-demo.example.com` behind a TLS reverse proxy that forwards WebSocket upgrades. `GET /health` is a health check. Build the client and server from the same release and match definitions. Offline modes work without a relay.
 
 Rooms live in memory, and unstarted and finished rooms expire after ten minutes. Client and room counts, message size, input queues, and creation rates are bounded. Use one relay instance per deployment unless you add room-aware routing or a shared room service. The relay limits room creation by the direct connection address. If a proxy sits in front of it, that limit is shared across the proxy's clients. A disconnect ends the room. The demo does not implement reconnect, client-side prediction, rollback, or matchmaking.
 

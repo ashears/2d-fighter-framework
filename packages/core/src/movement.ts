@@ -5,6 +5,19 @@ const attackButtons: readonly [MoveSlot, number][] = [
   ['special', Button.Special], ['heavy', Button.Heavy], ['light', Button.Light],
 ];
 
+export function advanceMove(actor: FighterState, fighter: ReadonlyDeep<FighterDefinition>, input: InputFrame) {
+  const move = actor.move;
+  if (!move) return;
+  const definition = fighter.moves[move.slot];
+  if (move.charge && !move.charge.released) {
+    const button = attackButtons.find(([slot]) => slot === move.slot)![1];
+    if (input & button) move.charge.held++;
+    if (!(input & button) || move.charge.held >= definition.chargeTicks!) move.charge.released = true;
+    return;
+  }
+  if (++move.frame >= definition.startup + definition.active + definition.recovery) actor.move = null;
+}
+
 export function overlaps(first: Readonly<Box>, second: Readonly<Box>) {
   return first.x < second.x + second.width && first.x + first.width > second.x
     && first.y < second.y + second.height && first.y + first.height > second.y;
@@ -59,9 +72,12 @@ export function advanceFighter(
     }
   }
 
-  if (actionable && !actor.guarding && actor.bufferedMove) {
+  if (actionable && !actor.guarding && actor.bufferedMove && (actor.cooldowns?.[actor.bufferedMove.slot] ?? 0) <= tick) {
     const { slot } = actor.bufferedMove;
+    const move = fighter.moves[slot];
     actor.move = { slot, frame: 0, facing: actor.facing, connectedActions: [] };
+    if (move.chargeTicks) actor.move.charge = { held: 0, released: false };
+    if (move.cooldownTicks) (actor.cooldowns ??= {})[slot] = tick + move.cooldownTicks;
     actor.bufferedMove = null;
     actor.velocity.x = 0;
     events.push({ type: 'attack', tick, seat, slot });

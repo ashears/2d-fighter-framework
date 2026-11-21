@@ -1,6 +1,6 @@
 {
   "name": "@ashears/fighter-relay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -17,7 +17,7 @@
     }
   },
   "dependencies": {
-    "@ashears/2d-fighter-framework": "0.2.0",
+    "@ashears/2d-fighter-framework": "0.3.0",
     "ws": "8.21.0"
   }
 }
