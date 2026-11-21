@@ -1,6 +1,6 @@
 {
   "name": "@ashears/fighter-demo",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,11 +10,11 @@
     "rooms": "node room-server.mjs"
   },
   "dependencies": {
-    "@ashears/2d-fighter-framework": "0.3.0",
-    "@ashears/fighter-reference": "0.3.0",
+    "@ashears/2d-fighter-framework": "0.4.0",
+    "@ashears/fighter-reference": "0.4.0",
     "phaser": "3.90.0",
-    "@ashears/fighter-relay": "0.3.0",
-    "@ashears/fighter-direct": "0.3.0"
+    "@ashears/fighter-relay": "0.4.0",
+    "@ashears/fighter-direct": "0.4.0"
   },
   "devDependencies": {
     "vite": "7.3.8"

@@ -1,7 +1,11 @@
+import '@ashears/2d-fighter-framework/arena-select.css';
+import { createArenaSelect } from '@ashears/2d-fighter-framework/arena-select';
+import '@ashears/2d-fighter-framework/fighter-select.css';
 import './style.css';
+import { createFighterSelect } from '@ashears/2d-fighter-framework/fighter-select';
 import { createMatch, SNAPSHOT_VERSION, TICK_RATE } from '@ashears/2d-fighter-framework';
 import type { GameEvent, MatchDefinition, ReadonlyDeep, Seat, Snapshot } from '@ashears/2d-fighter-framework';
-import { fighterIds, moveTips, referenceConfig, roster, ruleIds, stageIds, stageInfo, supportsMatch } from '@ashears/fighter-reference';
+import { arenas, fighterIds, moveTips, referenceConfig, roster, ruleIds, stageIds, stageInfo, supportsMatch } from '@ashears/fighter-reference';
 import type { FighterId, RuleId, StageId } from '@ashears/fighter-reference';
 import { copyInviteLink, createInviteLink, DirectRoomConnection, readInviteLink, supportsDirectRooms } from '@ashears/fighter-direct';
 import type { RoomView, ServerMessage } from '@ashears/fighter-relay/protocol';
@@ -29,20 +33,48 @@ const resultView = byId('result-view');
 const resultHeading = byId('result-heading');
 const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('button[data-mode]')];
 const rulesField = byId<HTMLSelectElement>('rules');
-const stageField = byId<HTMLSelectElement>('stage');
-const fighterOne = byId<HTMLSelectElement>('fighter-one');
-const fighterTwo = byId<HTMLSelectElement>('fighter-two');
+const arenaPicker = createArenaSelect(byId('stage'), stageIds.map((id) => ({
+  id, ...stageInfo[id], surfaces: arenas[id].surfaces,
+})), stageIds[0], { width: 960, height: 540 }, (stage) => {
+  if (!supportsMatch(stage, rulesField.value)) rulesField.value = 'health';
+  drawPreview();
+});
 const startButton = byId<HTMLButtonElement>('start');
 const replayButton = byId<HTMLButtonElement>('replay');
 const readyButton = byId<HTMLButtonElement>('ready');
 const againButton = byId<HTMLButtonElement>('again');
-const roomFighter = byId<HTMLSelectElement>('room-fighter');
 const sound = byId<HTMLInputElement>('sound');
 const touch = byId('touch-controls');
+const gamePanel = byId('game-panel');
 const debugToggle = byId<HTMLButtonElement>('debug-toggle');
 const frameData = byId('frame-data');
 const hud = byId('hud');
 const info = byId('arena-message');
+
+const selectedFighters: [FighterId, FighterId] = ['forge', 'relay'];
+const fighters = fighterIds.map((id) => ({ id, name: roster[id].name }));
+
+function renderPortrait(element: HTMLElement, fighter: FighterId) {
+  const icon = document.createElement('span');
+  icon.className = `fighter-icon ${fighter}`;
+  icon.append(document.createElement('i'));
+  element.append(icon);
+}
+
+const setupPicker = createFighterSelect(byId('fighter-fields'), {
+  fighters, renderPortrait,
+  onPick(player, fighter) {
+    selectedFighters[player === 'p1' ? 0 : 1] = fighter;
+    updateSetupPicker();
+    drawPreview();
+  },
+});
+const roomPicker = createFighterSelect(byId('room-fighter'), {
+  fighters, renderPortrait,
+  onPick(_player, fighter) {
+    connection.send({ type: 'select', fighter });
+  },
+});
 
 const renderer = new ArenaRenderer(byId('viewport'));
 const connection = new DirectRoomConnection({
@@ -72,8 +104,8 @@ let accumulator = 0;
 
 function readSetup(): Setup {
   return {
-    stage: stageField.value as StageId, rule: rulesField.value as RuleId,
-    fighters: [fighterOne.value as FighterId, fighterTwo.value as FighterId],
+    stage: arenaPicker.value, rule: rulesField.value as RuleId,
+    fighters: [...selectedFighters],
     seed: randomSeed(),
   };
 }
@@ -96,7 +128,7 @@ function updateMode() {
   byId('join-form').hidden = mode !== 'online' || !roomsAvailable;
   startButton.hidden = mode === 'online' && !roomsAvailable;
   byId('setup-moves').hidden = mode === 'online';
-  byId('opponent-label').textContent = mode === 'local' ? 'Player two' : mode === 'training' ? 'Training dummy' : 'CPU fighter';
+  updateSetupPicker();
   startButton.replaceChildren(document.createTextNode(
     mode === 'online' ? 'Copy invite link' : mode === 'training' ? 'Start training' : 'Start fight',
   ));
@@ -112,6 +144,16 @@ function updateMode() {
   };
   byId('setup-hint').textContent = hints[mode];
   replayButton.disabled = !lastReplay;
+}
+
+function updateSetupPicker() {
+  setupPicker.update([
+    { id: 'p1', label: 'Player one', badge: 'P1', fighter: selectedFighters[0] },
+    {
+      id: 'p2', label: mode === 'local' ? 'Player two' : mode === 'training' ? 'Training dummy' : 'CPU fighter',
+      badge: mode === 'local' ? 'P2' : mode === 'training' ? 'Dummy' : 'CPU', fighter: selectedFighters[1],
+    },
+  ]);
 }
 
 function drawMoves(container: HTMLElement, fighter: FighterId) {
@@ -144,6 +186,33 @@ function drawPreview() {
   info.hidden = true;
 }
 
+const arena = byId('arena');
+const matchTools = byId('match-tools');
+const fullscreenButton = byId<HTMLButtonElement>('fullscreen');
+
+function setFightView(playing: boolean) {
+  matchTools.hidden = !playing;
+  fullscreenButton.hidden = !playing || !document.fullscreenEnabled || !gamePanel.requestFullscreen;
+  if (!playing && document.fullscreenElement === gamePanel) {
+    void document.exitFullscreen().catch(() => {});
+  }
+}
+
+fullscreenButton.addEventListener('click', async () => {
+  try {
+    if (document.fullscreenElement === gamePanel) await document.exitFullscreen();
+    else await gamePanel.requestFullscreen();
+  } catch {
+    // The arena already fills the viewport when browser fullscreen is unavailable.
+  }
+  if (!matchTools.hidden) arena.focus({ preventScroll: true });
+});
+document.addEventListener('fullscreenchange', () => {
+  const fullscreen = document.fullscreenElement === gamePanel;
+  fullscreenButton.textContent = fullscreen ? 'Exit fullscreen' : 'Fullscreen';
+  if (fullscreen && matchTools.hidden) void document.exitFullscreen().catch(() => {});
+});
+
 function clearFight() {
   offline = undefined;
   online = undefined;
@@ -154,7 +223,6 @@ function clearFight() {
   info.hidden = true;
   frameData.hidden = true;
   touch.hidden = true;
-  byId('match-tools').hidden = true;
   debugToggle.hidden = true;
   debugToggle.setAttribute('aria-pressed', 'false');
   debugToggle.textContent = 'Show hitboxes';
@@ -167,6 +235,7 @@ function backToSetup(exitRoom = false) {
     room = undefined;
   }
   clearFight();
+  setFightView(false);
   privateResult = false;
   showView('setup');
   updateMode();
@@ -206,7 +275,8 @@ function startFight(
   const labels = { cpu: 'CPU fight', local: 'Local versus', training: 'Training', replay: 'Replay', online: `Online · P${seat + 1}` };
   byId('stage-name').textContent = stageInfo[selection.stage].name;
   byId('session-label').textContent = labels[matchMode];
-  byId('match-tools').hidden = false;
+  byId('stop').textContent = matchMode === 'online' ? 'Leave room' : 'End session';
+  setFightView(true);
   touch.hidden = !capturePointer || !controls.active || controls.local;
   debugToggle.hidden = matchMode !== 'training';
   frameData.hidden = matchMode !== 'training';
@@ -225,8 +295,7 @@ function startFight(
     byId('move-guide').hidden = matchMode === 'replay';
     setStatus(matchMode === 'replay' ? 'Replaying the recorded inputs.' : 'Fight in progress.');
   }
-  byId('stop').focus({ preventScroll: true });
-  if (capturePointer) byId('arena').scrollIntoView({ block: 'start' });
+  arena.focus({ preventScroll: true });
 }
 
 function stopFight() {
@@ -248,7 +317,7 @@ function finish(snapshot: Snapshot) {
   controls.active = false;
   controls.release();
   touch.hidden = true;
-  byId('match-tools').hidden = true;
+  setFightView(false);
   const winner = snapshot.winner;
   const mirrorMatch = definition.fighters[0].id === definition.fighters[1].id;
   resultHeading.textContent = winner === 'draw' || winner === null
@@ -289,8 +358,12 @@ function updateRoom() {
     return item;
   }));
   const own = room.players[seat];
-  roomFighter.value = own?.fighter ?? '';
-  roomFighter.disabled = room.status !== 'waiting';
+  byId('room-fighter').hidden = room.status !== 'waiting';
+  roomPicker.update(room.players.map((player, index) => ({
+    id: String(index), label: index === seat ? 'Your fighter' : 'Opponent',
+    badge: index === seat ? 'You' : 'Rival', fighter: player?.fighter as FighterId | undefined,
+    editable: index === seat && room?.status === 'waiting',
+  })));
   readyButton.disabled = room.status !== 'waiting' || !own?.fighter;
   readyButton.textContent = own?.ready ? 'Cancel ready' : 'Ready';
 }
@@ -315,7 +388,7 @@ function onServerMessage(message: ServerMessage) {
         if (firstView) {
           pairingCode.value = '';
           replyInput.value = '';
-          roomFighter.focus({ preventScroll: true });
+          roomPicker.focus();
         }
       } else if (room.status === 'finished' && room.players[seat]?.rematch) {
         againButton.disabled = true;
@@ -465,13 +538,8 @@ for (const button of modeButtons) {
   });
 }
 
-for (const select of [fighterOne, fighterTwo]) select.addEventListener('change', drawPreview);
 rulesField.addEventListener('change', () => {
-  stageField.value = rulesField.value === 'stock' ? 'overpass' : 'freight';
-  drawPreview();
-});
-stageField.addEventListener('change', () => {
-  if (stageField.value === 'freight' && rulesField.value === 'stock') rulesField.value = 'health';
+  arenaPicker.setValue(rulesField.value === 'stock' ? 'overpass' : 'freight');
   drawPreview();
 });
 
@@ -541,9 +609,6 @@ byId('cancel-pairing').addEventListener('click', () => {
   pairingAttempt++;
   connection.close();
   stopFight();
-});
-roomFighter.addEventListener('change', () => {
-  if (roomFighter.value) connection.send({ type: 'select', fighter: roomFighter.value });
 });
 readyButton.addEventListener('click', () => connection.send({ type: 'ready', ready: !room?.players[seat]?.ready }));
 for (const button of document.querySelectorAll('[data-leave-room]')) button.addEventListener('click', stopFight);

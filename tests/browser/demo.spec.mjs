@@ -16,7 +16,7 @@ async function open(page) {
 
 async function stock(page) {
   await page.getByRole('combobox', { name: 'Rules', exact: true }).selectOption('stock');
-  await expect(page.getByRole('combobox', { name: 'Arena', exact: true })).toHaveValue('overpass');
+  await expect(page.getByRole('group', { name: 'Arena', exact: true }).getByRole('button', { name: 'Skyline Overpass', exact: true })).toHaveAttribute('aria-pressed', 'true');
 }
 
 async function holdFor(page, key, duration) {
@@ -34,11 +34,25 @@ test('production preview, CPU mode, training hitboxes, and desktop layout', asyn
   await page.screenshot({ path: testInfo.outputPath('desktop.png'), fullPage: true });
   await page.getByRole('button', { name: 'Start fight' }).click();
   await expect(page.locator('#session-label')).toHaveText('CPU fight');
+  await expect(page.locator('.masthead')).toBeHidden();
+  await expect(page.locator('#controls')).toBeHidden();
+  await expect(page.locator('#arena')).toBeFocused();
+  expect(await page.locator('#game-panel').boundingBox()).toEqual({ x: 0, y: 0, ...page.viewportSize() });
+  const spaceWasConsumed = page.evaluate(() => new Promise((resolve) => {
+    window.addEventListener('keydown', (event) => resolve(event.defaultPrevented), { once: true });
+  }));
+  await page.keyboard.press('Space');
+  expect(await spaceWasConsumed).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await holdFor(page, 'd', 400);
   await holdFor(page, 'g', 350);
   await expect(page.locator('#hud')).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Fight in progress.');
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Exit fullscreen', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'End session' }).click();
+  await expect(page.locator('#controls')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
   await page.getByRole('button', { name: 'Training', exact: true }).click();
   await page.getByRole('button', { name: 'Start training' }).click();
   await expect(page.locator('#hud .clock')).toHaveText('∞');
@@ -130,8 +144,8 @@ test('a shared invite opens the lobby in a fresh browser, then players can play,
     for (const page of [host, guest]) await expect(page.getByRole('heading', { name: 'Private room' })).toBeVisible();
     expect(externalSockets).toEqual([]);
     await Promise.all([
-      host.getByRole('combobox', { name: 'Your fighter' }).selectOption('forge'),
-      guest.getByRole('combobox', { name: 'Your fighter' }).selectOption('relay'),
+      host.locator('#room-fighter [data-pick=forge]').click(),
+      guest.locator('#room-fighter [data-pick=relay]').click(),
     ]);
     await Promise.all([host, guest].map((page) => page.getByRole('button', { name: 'Ready', exact: true }).click()));
     await expect(host.locator('#session-label')).toHaveText('Online · P1');
@@ -184,7 +198,14 @@ test('health mode completes two rounds and clears the intermission HUD', async (
   await page.clock.install();
   await open(page);
   await page.getByRole('button', { name: 'Local', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Arena', exact: true }).selectOption('overpass');
+  const arena = page.getByRole('group', { name: 'Arena', exact: true });
+  const overpass = arena.getByRole('button', { name: 'Skyline Overpass', exact: true });
+  await overpass.hover();
+  await expect(page.locator('.arena-select-details strong')).toHaveText('Skyline Overpass');
+  await expect(arena.getByRole('button', { name: 'Freight Terminal', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await overpass.focus();
+  await overpass.press('Enter');
+  await expect(overpass).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('combobox', { name: 'Rules', exact: true })).toHaveValue('health');
   await page.getByRole('button', { name: 'Start fight' }).click();
   await page.keyboard.down('ArrowRight');

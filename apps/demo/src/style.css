@@ -143,3 +143,82 @@ kbd { display: inline-block; min-width: 16px; text-align: center; font-family: u
   overflow-wrap: anywhere;
 }
 #pairing-share .quiet { margin-top: 4px; }
+
+.fighter-select {
+  --select-edge: var(--line);
+  --select-panel: #151620;
+  --select-accent: var(--ember);
+  --select-muted: var(--muted);
+}
+.fighter-select-art { background: #232635; }
+
+.jump-hint { font-size: .75rem; color: var(--muted); }
+@media (pointer: coarse) { .jump-hint { display: none; } }
+
+body:has(#match-tools:not([hidden])) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body:has(#match-tools:not([hidden])) :is(.masthead, .field-guide, .intro) {
+  display: none;
+}
+
+body:has(#match-tools:not([hidden])) .setup {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  padding: 0;
+  border: 0;
+}
+
+body:has(#match-tools:not([hidden])) .setup > :not(#status) {
+  display: none;
+}
+
+.game-panel:has(#match-tools:not([hidden])) {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  overflow: hidden;
+}
+
+.game-panel:fullscreen { height: 100%; }
+
+.game-panel:has(#match-tools:not([hidden])) > :not(.arena-fit) { flex: none; }
+
+.game-panel:has(#match-tools:not([hidden])) .arena-fit {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
+  background: #0a0a0b;
+}
+
+.game-panel:has(#match-tools:not([hidden])) .arena {
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  outline: none;
+}
+
+.game-panel:has(#match-tools:not([hidden])) .arena-footer { flex-wrap: wrap; }
+
+.arena-select-art[data-arena="freight"] {
+  background-image:
+    linear-gradient(90deg, #171624 9%, transparent 11% 89%, #171624 91%),
+    radial-gradient(circle at 50% 48%, #f28d7f 0 19%, transparent 20%),
+    repeating-linear-gradient(90deg, #302638 0 8%, #403046 8% 13%, #382b3d 13% 17%);
+}
+
+.arena-select-art[data-arena="overpass"] {
+  background-image:
+    linear-gradient(152deg, transparent 62%, #242b43 63% 65%, transparent 66%),
+    linear-gradient(32deg, transparent 61%, #242b43 62% 64%, transparent 65%),
+    radial-gradient(circle at 74% 32%, #ffccb0 0 12%, transparent 13%),
+    linear-gradient(#212b47 15%, #635374 66%, #b97278);
+}

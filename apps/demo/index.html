@@ -21,15 +21,17 @@
       <p>Get in with Forge’s shoulder charge or keep your distance with Relay’s pulse shot. Try all three moves in Training.</p>
     </div>
     <div class="game-layout">
-      <section class="game-panel" aria-label="Arena">
+      <section id="game-panel" class="game-panel" aria-label="Arena">
         <div class="arena-caption">
           <span id="stage-name">Freight Terminal</span>
           <span id="session-label">Preview</span>
         </div>
-        <div class="arena" id="arena">
-          <div id="viewport" aria-hidden="true"></div>
-          <div id="hud" class="hud" hidden aria-hidden="true"></div>
-          <div id="arena-message" class="arena-message" hidden></div>
+        <div class="arena-fit">
+          <div class="arena" id="arena" tabindex="-1" role="group" aria-label="Fight arena">
+            <div id="viewport" aria-hidden="true"></div>
+            <div id="hud" class="hud" hidden aria-hidden="true"></div>
+            <div id="arena-message" class="arena-message" hidden></div>
+          </div>
         </div>
         <div id="touch-controls" class="touch-controls" hidden aria-label="Player one touch controls">
           <div class="touch-group">
@@ -50,6 +52,8 @@
             <button class="quiet" id="stop" type="button">End session</button>
             <button class="quiet" id="debug-toggle" type="button" aria-pressed="false" hidden>Show hitboxes</button>
           </div>
+          <span class="jump-hint">Jump <kbd>W</kbd> / <kbd>Space</kbd></span>
+          <button class="quiet" id="fullscreen" type="button" hidden>Fullscreen</button>
           <label class="check"><input id="sound" type="checkbox" checked> Sound</label>
         </div>
         <p id="frame-data" class="frame-data" hidden></p>
@@ -64,13 +68,10 @@
               <button type="button" data-mode="training" aria-pressed="false">Training</button>
               <button type="button" data-mode="online" aria-pressed="false">Online</button>
             </div>
-            <div id="fighter-fields" class="pair-fields">
-              <label>Player one<select id="fighter-one"><option value="forge">Forge</option><option value="relay">Relay</option></select></label>
-              <label><span id="opponent-label">CPU fighter</span><select id="fighter-two"><option value="relay">Relay</option><option value="forge">Forge</option></select></label>
-            </div>
+            <div id="fighter-fields"></div>
             <div class="pair-fields">
               <label>Rules<select id="rules"><option value="health">Health rounds</option><option value="stock">Three stocks</option></select></label>
-              <label>Arena<select id="stage"><option value="freight">Freight Terminal</option><option value="overpass">Skyline Overpass</option></select></label>
+              <div id="stage"></div>
             </div>
             <p class="hint" id="setup-hint"></p>
             <button class="primary full" id="start" type="submit">Start fight <span aria-hidden="true">↗</span></button>
@@ -104,7 +105,7 @@
           <h2 id="room-heading">Private room</h2>
           <p id="room-description" class="hint"></p>
           <ol id="room-players" class="room-players"></ol>
-          <label>Your fighter<select id="room-fighter"><option value="">Select a fighter</option><option value="forge">Forge</option><option value="relay">Relay</option></select></label>
+          <div id="room-fighter"></div>
           <button class="primary full room-ready" id="ready" type="button" disabled>Ready</button>
           <button class="quiet exit-room" data-leave-room type="button">Leave room</button>
         </section>
@@ -127,7 +128,7 @@
         <h2>Controls</h2>
         <table><thead><tr><th scope="col">Action</th><th scope="col">Player one</th><th scope="col">Player two</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Move / jump</th><td><kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd></td><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd></td></tr>
+            <tr><th scope="row">Move / jump</th><td><kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd> or <kbd>Space</kbd></td><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd></td></tr>
             <tr><th scope="row">Drop through</th><td><kbd>S</kbd> + <kbd>W</kbd></td><td><kbd>↓</kbd> + <kbd>↑</kbd></td></tr>
             <tr><th scope="row">Guard</th><td><kbd>R</kbd></td><td><kbd>Right Shift</kbd></td></tr>
             <tr><th scope="row">Light / heavy / special</th><td><kbd>F</kbd> <kbd>G</kbd> <kbd>H</kbd></td><td><kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></td></tr>

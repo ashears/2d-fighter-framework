@@ -1,10 +1,36 @@
 {
   "name": "@ashears/2d-fighter-framework",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Deterministic two-player combat simulation for 2D fighters",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=22" },
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist/*.js", "dist/*.d.ts"]
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./fighter-select": {
+      "types": "./dist/fighter-select.d.ts",
+      "import": "./dist/fighter-select.js"
+    },
+    "./fighter-select.css": {
+      "default": "./src/fighter-select.css"
+    },
+    "./arena-select": {
+      "types": "./dist/arena-select.d.ts",
+      "import": "./dist/arena-select.js"
+    },
+    "./arena-select.css": {
+      "default": "./src/arena-select.css"
+    }
+  },
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts",
+    "src/fighter-select.css",
+    "src/arena-select.css"
+  ]
 }

@@ -24,7 +24,7 @@ Touch controls appear on devices with a coarse pointer in single-player, trainin
 
 ## Use the core in another game
 
-Run `npm run release:local` and install the versioned `ashears-2d-fighter-framework-0.3.0.tgz` from the consuming project. Commit the tarball at a stable relative path in that project if it must install reproducibly in CI. The tarball has no runtime dependencies and includes ESM and TypeScript declarations.
+Run `npm run release:local` and install the versioned `ashears-2d-fighter-framework-0.4.0.tgz` from the consuming project. Commit the tarball at a stable relative path in that project if it must install reproducibly in CI. The tarball has no runtime dependencies and includes ESM and TypeScript declarations.
 
 See [the package quickstart](packages/core/README.md) for a complete match definition. The reference game and room server import the same public package.
 
@@ -32,6 +32,9 @@ See [the package quickstart](packages/core/README.md) for a complete match defin
 - **Build a stage.** Supply two spawn points at the fighters' feet and horizontal surfaces with world coordinates. Fighters land by crossing a surface downward. One-way surfaces allow drop-through with Down + Jump. Use walls for an enclosed stage and provide a blast zone for stock rules. Use the same geometry when rendering. Health rules also support an open stage with ring-outs.
 - **Run the match.** Send two held-input bitmasks to `step` at 60 Hz. Simultaneous contacts are gathered before hit reactions. Fresh jumps and attacks buffer for six ticks by default. Read the returned snapshot for rendering and react to ordered events for sound and effects. `getCombatBoxes` returns world-space boxes for debugging. The engine uses no wall clock, DOM, Phaser physics, or global random source.
 - **Customize rules.** Implement `RuleSet<State>` with JSON state and a versioned ID. Its evaluation hook receives both fighter states, the tick, a seeded random value, and the previous rule state. It can end a round or match and request stock losses. Run `node examples/timed-survival.mjs` after building the packages for a custom objective example. Make state and decisions depend on the supplied context to preserve deterministic playback.
+- **Make a browser fighter-select screen.** Import `createFighterSelect` from `@ashears/2d-fighter-framework/fighter-select` and the styles from `@ashears/2d-fighter-framework/fighter-select.css`. Supply the roster and a portrait renderer, then call `update(seats, lockedFighterIds)` to show the current assignments and availability. The `onPick` callback returns the seat and fighter IDs for the game to apply. See the Aftershift demo for local and online integration.
+- **Build a tournament.** Use `createCampaign([{ id, createFight }])` with bout factories that receive the player choice and seed and return a match and opponent input function. The bracket provides `normalize`, `status`, `nextBout`, `startBout`, and `recordResult`. Pass the finished snapshot to record a seat-zero win. The game owns its save storage and rewards.
+- **Give rivals distinct tactics.** Pass a `rival` profile to `createCpu` with ordered attack ranges and move slots, plus optional guarding, retreat distance, and charge duration. The profile uses the supplied snapshot and seed and can be recreated for another round or phase.
 - **Save or replay.** Restore a compatible `Snapshot` with `createMatch(definition, rules, snapshot)`. For playback, record the input pair per step, build a `Recording` with `createRecording`, and run `playRecording` or step through the inputs visually. The snapshot version, configuration fingerprint, and seed identify compatible data. The checksum is for comparing gameplay state across runs. Use the 0.1.0 engine to play v1 recordings or restore v1 snapshots. Aftershift 0.2.0 uses a new session replay slot.
 
 Health matches end after two round wins or three rounds, with timeout decisions based on remaining health percentage. Stock matches use three stocks, damage-scaled knockback, and protected respawns. A stock timeout compares stock count first and then accumulated damage. Exact ties draw.
@@ -47,7 +50,7 @@ The browser uses local network candidates and no STUN, TURN, or signaling servic
 `createRoomServer({ game, allowedOrigins })` in the relay workspace accepts a trusted content registry of fighter, stage, and rule IDs, a function returning the match definition and rule policy for each selection, and an optional `supports(stage, rule)` compatibility check. Run the reference server with `npm run rooms`. To reuse the server in another project, install the matching core and relay tarballs together from the directory where you saved them.
 
 ```sh
-npm install ./ashears-2d-fighter-framework-0.3.0.tgz ./ashears-fighter-relay-0.3.0.tgz
+npm install ./ashears-2d-fighter-framework-0.4.0.tgz ./ashears-fighter-relay-0.4.0.tgz
 ```
 
 Import `createRoomServer` from `@ashears/fighter-relay` and the protocol types and codecs from `@ashears/fighter-relay/protocol`. The server owns rules and combat, accepts sequenced inputs on `/rooms`, and sends 20 snapshots per second with the latest applied input sequences and intervening events. The browser interpolates positions with about 105 ms of playback delay.

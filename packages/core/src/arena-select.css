@@ -1,0 +1,88 @@
+.arena-select {
+  --stage-accent: #ffd08e;
+  display: grid;
+  gap: 7px;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.arena-select-preview {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 132px;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #ffffff35;
+  color: #fff6e8;
+  background: #171c28;
+}
+
+.arena-select-art {
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: #262c40;
+  background-position: center;
+  background-size: cover;
+}
+
+.arena-select-art > span {
+  position: absolute;
+  height: 3%;
+  min-height: 2px;
+  border-top: 1px solid #f8dfb7;
+  background: #253334;
+  box-shadow: 0 2px 3px #151623a8;
+}
+
+.arena-select-details {
+  align-self: end;
+  z-index: 1;
+  padding: 20px 10px 8px;
+  background: linear-gradient(transparent, #10141eea 52%);
+  pointer-events: none;
+}
+
+.arena-select-details strong { display: block; font-size: 1rem; line-height: 1.15; }
+.arena-select-details p { margin: 3px 0 0; font-size: .74rem; line-height: 1.3; }
+
+.arena-select-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 84px), 1fr));
+  gap: 6px;
+}
+
+.arena-select-grid button {
+  position: relative;
+  display: grid;
+  align-items: end;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 52px;
+  aspect-ratio: 1.65;
+  padding: 0;
+  border: 2px solid #59616b;
+  color: #fff6e8;
+  background: #171c28;
+  text-align: left;
+}
+
+.arena-select-grid button[aria-pressed="true"] { border-color: var(--stage-accent); }
+.arena-select-grid button:hover { border-color: #fff6e8; }
+.arena-select-grid button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.arena-select-caption {
+  position: relative;
+  padding: 4px;
+  background: #10141eda;
+  font-size: .68rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.arena-select-grid button[aria-pressed="true"] .arena-select-caption {
+  color: #171c28;
+  background: var(--stage-accent);
+}
