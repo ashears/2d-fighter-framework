@@ -106,7 +106,7 @@ button:disabled { opacity: .48; cursor: default; }
 .fighter-icon i { width: 27px; height: 22px; display: block; background: var(--ember); clip-path: polygon(0 25%,25% 0,85% 5%,100% 28%,95% 88%,73% 100%,10% 85%); }
 .fighter-icon.relay { background: #273740; }
 .fighter-icon.relay i { background: var(--mint); clip-path: polygon(22% 0,76% 8%,100% 49%,71% 100%,17% 89%,0 45%); }
-.move-guide { margin: 0; display: grid; grid-template-columns: minmax(80px, auto) 1fr; gap: 9px 12px; font-size: .75rem; }
+.move-guide { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 9px 12px; font-size: .75rem; }
 .move-guide dt { color: var(--muted); }
 .move-guide dd { margin: 0; font-weight: 650; }
 table { width: 100%; border-collapse: collapse; font-size: .75rem; text-align: left; }
@@ -130,3 +130,8 @@ kbd { display: inline-block; min-width: 16px; text-align: center; font-family: u
   .touch-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .touch-group { display: grid; grid-template-columns: repeat(2, minmax(44px, 1fr)); }
 }
+
+.setup-moves { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+.move-guide dt { padding-top: 1px; }
+.move-guide dd strong { display: block; }
+.move-guide dd span { display: block; font-size: .72rem; font-weight: 450; color: var(--muted); margin-top: 2px; line-height: 1.3; }

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { getCombatBoxes } from '@ashears/2d-fighter-framework';
-import type { GameEvent, MatchDefinition, ReadonlyDeep, Seat, Snapshot } from '@ashears/2d-fighter-framework';
+import { getCombatBoxes, getProjectileDefinition, worldBox } from '@ashears/2d-fighter-framework';
+import type { FighterDefinition, GameEvent, MatchDefinition, ReadonlyDeep, Seat, Snapshot } from '@ashears/2d-fighter-framework';
 import { arenas } from '@ashears/fighter-reference';
 import type { StageId } from '@ashears/fighter-reference';
 
@@ -111,15 +111,23 @@ function paintBackground(graphics: Graphics, stage: StageId) {
   graphics.lineStyle(1, 0xb0898d, 0.25).lineBetween(0, 518, width, 518);
 }
 
-function paintFighter(graphics: Graphics, x: number, y: number, seat: Seat, id: string, tick: number, actor: Snapshot['fighters'][0]) {
+function paintFighter(
+  graphics: Graphics, x: number, y: number, seat: Seat, fighter: ReadonlyDeep<FighterDefinition>,
+  tick: number, actor: Snapshot['fighters'][0], reducedMotion: boolean,
+) {
   if (actor.respawn || actor.health <= 0) return;
   const { ink, shade, metal, light } = palettes[seat];
-  const heavy = id === 'forge';
-  const alpha = actor.invulnerable > 0 && tick % 9 < 4 ? 0.55 : 1;
+  const heavy = fighter.id === 'forge';
+  const alpha = !reducedMotion && actor.invulnerable > 0 && tick % 9 < 4 ? 0.55 : 1;
   const facing = actor.move?.facing ?? actor.facing;
-  const bob = actor.surface === null ? 1 : Math.sin(tick * 0.12 + seat) * 1.8;
-  const stride = actor.surface && Math.abs(actor.velocity.x) > 1 ? Math.sin(tick * 0.52) * 12 : 0;
-  const striking = actor.move ? Math.min(24, actor.move.frame * 3) * (actor.move.slot === 'light' ? 0.7 : 1) : 0;
+  const bob = actor.surface === null || reducedMotion ? 0 : Math.sin(tick * 0.12 + seat) * 1.8;
+  const stride = !reducedMotion && actor.surface && Math.abs(actor.velocity.x) > 1 ? Math.sin(tick * 0.52) * 12 : 0;
+  const attack = actor.move;
+  const move = attack && fighter.moves[attack.slot];
+  const frame = attack?.frame ?? 0;
+  const startup = move ? frame < move.startup : false;
+  const active = move ? frame >= move.startup && frame < move.startup + move.active : false;
+  const striking = startup ? -8 : active && attack?.slot === 'light' ? 21 : active ? 13 : 0;
   const pose = (color: number, points: number[], opacity = alpha) =>
     polygon(graphics, color, points.map((point, index) => index % 2 ? y + point + bob : x + point * facing), opacity);
 
@@ -153,6 +161,38 @@ function paintFighter(graphics: Graphics, x: number, y: number, seat: Seat, id: 
     pose(light, [20 + striking, -55, 27 + striking, -56, 28 + striking, -50, 19 + striking, -49]);
   }
 
+  if (startup && attack?.slot !== 'light') {
+    const power = move ? frame / Math.max(1, move.startup) : 0;
+    const charge = attack?.slot === 'special';
+    const effectX = x + (charge ? 38 : 22) * facing;
+    const effectY = y - (charge ? 62 : 85);
+    graphics.fillStyle(light, 0.26 + power * 0.38).fillCircle(effectX, effectY, 5 + power * 7);
+    graphics.lineStyle(2, light, 0.75).strokeCircle(effectX, effectY, 9 + power * 9);
+  }
+
+  if (active && attack?.slot === 'light') {
+    graphics.lineStyle(3.5, light, 0.82).lineBetween(x + facing * 40, y - 57, x + facing * 72, y - 57);
+    graphics.lineStyle(1.5, light, 0.54).lineBetween(x + facing * 44, y - 65, x + facing * 64, y - 65);
+  } else if (active && attack?.slot === 'heavy') {
+    if (heavy && move) {
+      const rise = (frame - move.startup) / Math.max(1, move.active - 1);
+      const fistX = 64 - rise * 20;
+      const fistY = -48 - rise * 72;
+      pose(metal, [17, -64, 24, -57, fistX, fistY + 10, fistX, fistY - 8, 15, -76]);
+      pose(light, [fistX - 9, fistY - 6, fistX + 5, fistY - 11, fistX + 13, fistY, fistX + 3, fistY + 10]);
+      graphics.lineStyle(5, light, 0.7).lineBetween(x + facing * (fistX - 13), y + fistY + 19, x + facing * (fistX + 5), y + fistY - 14);
+    } else {
+      pose(shade, [4, -48, 15, -35, 73, -54, 78, -64, 64, -67, 14, -55]);
+      pose(light, [62, -67, 81, -68, 87, -60, 73, -53, 60, -56]);
+      graphics.lineStyle(4, light, 0.65).lineBetween(x + facing * 44, y - 46, x + facing * 101, y - 65);
+    }
+  } else if (attack?.slot === 'special' && active && heavy) {
+    pose(light, [13, -71, 46, -85, 59, -69, 52, -50, 23, -43], 0.58);
+    for (const offset of [45, 62, 73]) {
+      graphics.lineStyle(3, light, 0.65).lineBetween(x - facing * 77, y - offset, x + facing * 52, y - offset);
+    }
+  }
+
   if (actor.guarding) {
     graphics.fillStyle(light, 0.12).fillCircle(x + 10 * facing, y - 56, 57);
     graphics.lineStyle(2, light, 0.75).strokeCircle(x + 10 * facing, y - 56, 57);
@@ -165,6 +205,8 @@ export class ArenaRenderer {
   private action?: Graphics;
   private selectedStage: StageId = 'freight';
   private sparks: Spark[] = [];
+  private camera?: Phaser.Cameras.Scene2D.Camera;
+  private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   constructor(parent: HTMLElement) {
     new Phaser.Game({
@@ -176,6 +218,7 @@ export class ArenaRenderer {
           return function (this: Phaser.Scene) {
             renderer.background = this.add.graphics();
             renderer.action = this.add.graphics();
+            renderer.camera = this.cameras.main;
             paintBackground(renderer.background, renderer.selectedStage);
             this.game.canvas.setAttribute('aria-hidden', 'true');
           };
@@ -197,6 +240,9 @@ export class ArenaRenderer {
       if (event.type !== 'hit' && event.type !== 'block' && event.type !== 'guard-break') continue;
       const seat = 'target' in event ? event.target : event.seat;
       const { x, y } = snapshot.fighters[seat].position;
+      if (!this.reducedMotion.matches && (event.type === 'guard-break' || (event.type === 'hit' && event.damage >= 20))) {
+        this.camera?.shake(95, 0.006, true);
+      }
       this.sparks.push({ x, y: y - 58, born: now, color: event.type === 'block' ? mint : coral, strength: event.type === 'guard-break' ? 1.6 : 1 });
     }
   }
@@ -208,18 +254,19 @@ export class ArenaRenderer {
     const graphics = this.action;
     if (!graphics) return;
     graphics.clear();
-    const boxes = getCombatBoxes(definition, snapshot);
-    for (const { kind, box, seat } of boxes) {
-      if (kind !== 'projectile') continue;
+    for (const projectile of snapshot.projectiles) {
+      const shape = getProjectileDefinition(definition, projectile);
+      const box = worldBox(shape.box, projectile.position, projectile.facing);
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
-      graphics.fillStyle(palettes[seat].light, 0.2).fillEllipse(x, y, box.width + 16, box.height + 16);
-      polygon(graphics, palettes[seat].light, [x - 13, y, x, y - 10, x + 13, y, x, y + 10]);
-      graphics.fillStyle(0xffedd7).fillCircle(x, y, 4);
+      const { facing, owner: seat } = projectile;
+      graphics.fillStyle(palettes[seat].light, 0.22).fillEllipse(x - facing * 9, y, 56, 19);
+      graphics.fillStyle(palettes[seat].light).fillEllipse(x, y, box.width, 11);
+      graphics.fillStyle(0xffedd7).fillEllipse(x + facing * 3, y, 17, 5);
     }
     for (const seat of [0, 1] as const) {
       const { x, y } = positions[seat];
-      paintFighter(graphics, x, y, seat, definition.fighters[seat].id, snapshot.tick, snapshot.fighters[seat]);
+      paintFighter(graphics, x, y, seat, definition.fighters[seat], snapshot.tick, snapshot.fighters[seat], this.reducedMotion.matches);
     }
     this.sparks = this.sparks.filter(({ born }) => now - born < 220);
     for (const spark of this.sparks) {
@@ -234,7 +281,7 @@ export class ArenaRenderer {
       }
     }
     if (debug) {
-      for (const { kind, box } of boxes) {
+      for (const { kind, box } of getCombatBoxes(definition, snapshot)) {
         const color = kind === 'hurtbox' ? mint : coral;
         graphics.fillStyle(color, 0.19).fillRect(box.x, box.y, box.width, box.height);
         graphics.lineStyle(1, color, 0.89).strokeRect(box.x, box.y, box.width, box.height);

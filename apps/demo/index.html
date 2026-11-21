@@ -18,7 +18,7 @@
         <p class="eyebrow">2D Fighter Framework Demo</p>
         <h1>Aftershift<span>.</span></h1>
       </div>
-      <p>Pick a fighter and meet on the night shift. Play against the CPU, share a keyboard, or invite a friend to a private room.</p>
+      <p>Get in with Forge’s shoulder charge or keep your distance with Relay’s pulse shot. Try all three moves in Training.</p>
     </div>
     <div class="game-layout">
       <section class="game-panel" aria-label="Arena">
@@ -50,7 +50,7 @@
             <button class="quiet" id="stop" type="button">End session</button>
             <button class="quiet" id="debug-toggle" type="button" aria-pressed="false" hidden>Show hitboxes</button>
           </div>
-          <label class="check"><input id="sound" type="checkbox"> Sound</label>
+          <label class="check"><input id="sound" type="checkbox" checked> Sound</label>
         </div>
         <p id="frame-data" class="frame-data" hidden></p>
       </section>
@@ -79,6 +79,7 @@
             <label>Room code<input id="room-code" name="room" placeholder="ABCD2345" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" required></label>
             <button class="secondary" type="submit">Join room</button>
           </form>
+          <dl id="setup-moves" class="move-guide setup-moves" aria-label="Player one moves"></dl>
           <button class="quiet replay-link" id="replay" type="button" disabled>Replay last match <span aria-hidden="true">↻</span></button>
         </div>
         <section id="active-view" hidden aria-labelledby="active-heading">
@@ -107,8 +108,8 @@
     <section class="field-guide" aria-label="How to play">
       <div class="roster-card">
         <h2>Meet the fighters</h2>
-        <div class="fighter-note"><div class="fighter-icon forge" aria-hidden="true"><i></i></div><div><h3>Forge <span>Bruiser</span></h3><p>Close the gap with Furnace Rush and break guards up close.</p></div></div>
-        <div class="fighter-note"><div class="fighter-icon relay" aria-hidden="true"><i></i></div><div><h3>Relay <span>Zoner</span></h3><p>Control space with fast footwork and long-range Signal Bolts.</p></div></div>
+        <div class="fighter-note"><div class="fighter-icon forge" aria-hidden="true"><i></i></div><div><h3>Forge <span>Bruiser</span></h3><p>Charge into range, crack guards, and uppercut jump-ins.</p></div></div>
+        <div class="fighter-note"><div class="fighter-icon relay" aria-hidden="true"><i></i></div><div><h3>Relay <span>Zoner</span></h3><p>Force an approach with Pulse Shot, then intercept with a stepping kick.</p></div></div>
       </div>
       <div class="controls-card" id="controls">
         <h2>Controls</h2>

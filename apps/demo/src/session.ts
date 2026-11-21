@@ -1,6 +1,6 @@
-import { createCpu, createMatch, createRecording, isInputFrame, SNAPSHOT_VERSION } from '@ashears/2d-fighter-framework';
+import { createMatch, createRecording, isInputFrame, SNAPSHOT_VERSION } from '@ashears/2d-fighter-framework';
 import type { GameEvent, InputFrame, Match, Pair, Recording, Snapshot } from '@ashears/2d-fighter-framework';
-import { fighterIds, referenceConfig, referenceTrainingConfig, ruleIds, stageIds } from '@ashears/fighter-reference';
+import { createAftershiftCpu, fighterIds, referenceConfig, referenceTrainingConfig, ruleIds, stageIds } from '@ashears/fighter-reference';
 import type { FighterId, RuleId, StageId } from '@ashears/fighter-reference';
 import type { Controls } from './input';
 
@@ -53,7 +53,7 @@ export class OfflineFight {
     const config = mode === 'training' ? referenceTrainingConfig : referenceConfig;
     const { definition, rules } = config(setup.fighters, setup.stage, setup.rule, setup.seed);
     this.match = createMatch(definition, rules);
-    this.cpu = createCpu({ seed: setup.seed, preferredRange: setup.fighters[1] === 'forge' ? 58 : 135, stage: definition.stage });
+    this.cpu = createAftershiftCpu(definition);
   }
 
   tick(controls: Controls) {
@@ -63,7 +63,7 @@ export class OfflineFight {
     }
     const first = controls.next(0);
     const second = this.mode === 'local' ? controls.next(1)
-      : this.mode === 'cpu' ? this.cpu(this.match.snapshot(), 1) : 0;
+      : this.mode === 'cpu' ? this.cpu(this.match.snapshot()) : 0;
     const frame: Pair<InputFrame> = [first, second];
     if (this.mode !== 'training') this.inputs.push(frame);
     return this.match.step(frame);

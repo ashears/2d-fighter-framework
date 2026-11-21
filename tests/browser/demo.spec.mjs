@@ -47,8 +47,10 @@ test('production preview, CPU mode, training hitboxes, and desktop layout', asyn
   await expect(page.getByRole('button', { name: 'Hide hitboxes' })).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.down('h');
   await page.clock.runFor(50);
-  await expect(page.locator('#frame-data')).toContainText('Furnace Rush');
+  await expect(page.locator('#frame-data')).toContainText('Shoulder Charge');
   await page.keyboard.up('h');
+  await page.clock.runFor(155);
+  await expect(page.locator('#hud .hud-value').last()).toHaveText('66 HP · 0');
   await expect(page.locator('#frame-data')).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -88,7 +90,7 @@ test('solo touch inputs run a move and the mobile layout fits the viewport', asy
     await expect(page.getByRole('button', { name: 'Move left' })).toBeVisible();
     await page.getByRole('button', { name: 'Light attack' }).tap();
     await page.clock.runFor(34);
-    await expect(page.locator('#frame-data')).toContainText('Rivet Jab');
+    await expect(page.locator('#frame-data')).toContainText('Quick Jab');
     expect(await page.locator('body').evaluate((el) => el.scrollWidth)).toBeLessThanOrEqual(390);
     await page.screenshot({ path: testInfo.outputPath('mobile.png'), fullPage: true });
     expect(errors).toEqual([]);
@@ -104,7 +106,7 @@ test('two isolated browser clients play a complete private stock match with late
     const host = await hostContext.newPage();
     const guest = await guestContext.newPage();
     const errors = [captureErrors(host), captureErrors(guest)];
-    await guest.routeWebSocket('ws://127.0.0.1:8787/rooms', (route) => {
+    await guest.routeWebSocket(`ws://127.0.0.1:${process.env.AFTERSHIFT_TEST_ROOM_PORT ?? '8787'}/rooms`, (route) => {
       const upstream = route.connectToServer();
       let active = true;
       route.onClose((code, reason) => { active = false; upstream.close({ code, reason }); });
@@ -200,7 +202,7 @@ test('stock training respawns after a stock loss and restarts after the final st
   await page.getByRole('button', { name: 'Start training' }).click();
   await page.getByRole('button', { name: 'Show hitboxes' }).click();
   await page.keyboard.down('a');
-  await page.clock.runFor(1400);
+  await page.clock.runFor(1750);
   await expect(page.locator('.hud-value').first()).toHaveText('0% · 2 ◆');
   await page.clock.runFor(5100);
   await page.keyboard.up('a');

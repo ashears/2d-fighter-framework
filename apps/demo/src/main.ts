@@ -1,7 +1,7 @@
 import './style.css';
 import { createMatch, SNAPSHOT_VERSION, TICK_RATE } from '@ashears/2d-fighter-framework';
 import type { GameEvent, MatchDefinition, ReadonlyDeep, Seat, Snapshot } from '@ashears/2d-fighter-framework';
-import { fighterIds, referenceConfig, roster, ruleIds, stageIds, stageInfo } from '@ashears/fighter-reference';
+import { fighterIds, moveTips, referenceConfig, roster, ruleIds, stageIds, stageInfo } from '@ashears/fighter-reference';
 import type { FighterId, RuleId, StageId } from '@ashears/fighter-reference';
 import { ROOM_CODE } from '@ashears/fighter-relay/protocol';
 import type { RoomView, ServerMessage } from '@ashears/fighter-relay/protocol';
@@ -85,6 +85,7 @@ function updateMode() {
   for (const button of modeButtons) button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
   byId('fighter-fields').hidden = mode === 'online';
   byId('join-form').hidden = mode !== 'online';
+  byId('setup-moves').hidden = mode === 'online';
   byId('opponent-label').textContent = mode === 'local' ? 'Player two' : mode === 'training' ? 'Training dummy' : 'CPU fighter';
   startButton.replaceChildren(document.createTextNode(
     mode === 'online' ? 'Create private room' : mode === 'training' ? 'Start training' : 'Start fight',
@@ -96,15 +97,32 @@ function updateMode() {
   const hints: Record<Mode, string> = {
     cpu: 'Fight a CPU opponent. Touch controls are available on mobile.',
     local: 'Two fighters, one keyboard.',
-    training: 'Practice against a stationary dummy and inspect move frames.',
+    training: 'The dummy starts in jab range. Try F, G, and H to see each move land.',
     online: 'Create a room to share its code, or join a friend below.',
   };
   byId('setup-hint').textContent = hints[mode];
   replayButton.disabled = !lastReplay;
 }
 
+function drawMoves(container: HTMLElement, fighter: FighterId) {
+  container.replaceChildren(...(['light', 'heavy', 'special'] as const).flatMap((slot, index) => {
+    const binding = document.createElement('dt');
+    const key = document.createElement('kbd');
+    key.textContent = ['F', 'G', 'H'][index];
+    binding.append(key);
+    const detail = document.createElement('dd');
+    const name = document.createElement('strong');
+    name.textContent = roster[fighter].moves[slot].name;
+    const tip = document.createElement('span');
+    tip.textContent = moveTips[fighter][slot];
+    detail.append(name, tip);
+    return [binding, detail];
+  }));
+}
+
 function drawPreview() {
   setup = readSetup();
+  drawMoves(byId('setup-moves'), setup.fighters[0]);
   const config = referenceConfig(setup.fighters, setup.stage, setup.rule, setup.seed);
   const preview = createMatch(config.definition, config.rules);
   definition = preview.definition;
@@ -157,10 +175,17 @@ function startLocal(selection: Setup, localMode: LocalMode | 'replay', saved?: S
   startFight(selection, offline.match.definition, offline.match.snapshot(), localMode);
 }
 
+function enableSound() {
+  if (!sound.checked || !window.AudioContext) return;
+  audio ??= new AudioContext();
+  if (audio.state === 'suspended') void audio.resume().catch(() => {});
+}
+
 function startFight(
   selection: Setup, matchDefinition: ReadonlyDeep<MatchDefinition>, snapshot: Snapshot,
   matchMode: LocalMode | 'replay' | 'online',
 ) {
+  enableSound();
   setup = selection;
   definition = matchDefinition;
   currentSnapshot = snapshot;
@@ -186,14 +211,7 @@ function startFight(
     showView('active');
     byId('active-heading').textContent = labels[matchMode];
     byId('active-matchup').textContent = `${definition.fighters[0].name} vs. ${definition.fighters[1].name}`;
-    const names = ['Light · F', 'Heavy · G', 'Special · H'];
-    byId('move-guide').replaceChildren(...(['light', 'heavy', 'special'] as const).flatMap((slot, index) => {
-      const binding = document.createElement('dt');
-      const name = document.createElement('dd');
-      binding.textContent = names[index];
-      name.textContent = definition.fighters[0].moves[slot].name;
-      return [binding, name];
-    }));
+    drawMoves(byId('move-guide'), selection.fighters[0]);
     byId('move-guide').hidden = matchMode === 'replay';
     setStatus(matchMode === 'replay' ? 'Replaying the recorded inputs.' : 'Fight in progress.');
   }
@@ -375,14 +393,17 @@ function react(snapshot: Snapshot, events: readonly GameEvent[], now: number) {
     const oscillator = audio.createOscillator();
     const volume = audio.createGain();
     const at = audio.currentTime;
-    oscillator.type = event.type === 'attack' ? 'sine' : 'triangle';
-    oscillator.frequency.setValueAtTime(event.type === 'hit' ? 180 : event.type === 'stock-lost' ? 98 : 330, at);
-    oscillator.frequency.exponentialRampToValueAtTime(45, at + 0.12);
-    volume.gain.setValueAtTime(0.12, at);
-    volume.gain.exponentialRampToValueAtTime(0.001, at + 0.12);
+    const impact = event.type === 'hit';
+    const duration = impact ? .16 : .09;
+    const frequency = event.type === 'block' ? 560 : event.type === 'stock-lost' ? 118 : impact ? 145 : 260;
+    oscillator.type = impact ? 'triangle' : event.type === 'block' ? 'square' : 'sine';
+    oscillator.frequency.setValueAtTime(frequency, at);
+    oscillator.frequency.exponentialRampToValueAtTime(impact ? 43 : frequency / 2.5, at + duration);
+    volume.gain.setValueAtTime(impact ? .20 : .045, at);
+    volume.gain.exponentialRampToValueAtTime(.001, at + duration);
     oscillator.connect(volume).connect(audio.destination);
     oscillator.start(at);
-    oscillator.stop(at + 0.13);
+    oscillator.stop(at + duration);
   }
 }
 
@@ -493,11 +514,7 @@ function setDebug(visible: boolean) {
 }
 
 debugToggle.addEventListener('click', () => setDebug(!debug));
-sound.addEventListener('change', () => {
-  if (!sound.checked) return;
-  audio ??= new AudioContext();
-  void audio.resume();
-});
+sound.addEventListener('change', enableSound);
 matchMedia('(any-pointer: coarse)').addEventListener('change', (event) => {
   capturePointer = event.matches;
   touch.hidden = !capturePointer || !controls.active || controls.local;
