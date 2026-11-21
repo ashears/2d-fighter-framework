@@ -98,23 +98,28 @@ test('solo touch inputs run a move and the mobile layout fits the viewport', asy
   }
 });
 
-test('two isolated browsers exchange WebRTC codes, play, rematch and leave', async ({ browser }) => {
+test('a shared invite opens the lobby in a fresh browser, then players can play, rematch and leave', async ({ browser }) => {
   const hostContext = await browser.newContext();
   const guestContext = await browser.newContext();
   try {
     const host = await hostContext.newPage();
     const guest = await guestContext.newPage();
     const errors = [captureErrors(host), captureErrors(guest)];
-    await Promise.all([open(host), open(guest)]);
-    await Promise.all([host, guest].map((page) => page.getByRole('button', { name: 'Online', exact: true }).click()));
+    await open(host);
+    await host.getByRole('button', { name: 'Online', exact: true }).click();
     await stock(host);
     const externalSockets = [];
     for (const page of [host, guest]) page.on('websocket', ({ url }) => externalSockets.push(url));
-    await host.getByRole('button', { name: 'Create invite' }).click();
-    await expect(host.locator('#pairing-code')).toHaveValue(/^FIGHT1\./);
-    const invite = await host.locator('#pairing-code').inputValue();
-    await guest.locator('#invite-input').fill(invite);
-    await guest.getByRole('button', { name: 'Generate reply' }).click();
+    await hostContext.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await host.getByRole('button', { name: 'Copy invite link' }).click();
+    await expect(host.getByRole('status')).toHaveText('Invite link copied.', { timeout: 11_000 });
+    const invite = await host.evaluate(() => navigator.clipboard.readText());
+    expect(invite).toBe(await host.locator('#pairing-code').inputValue());
+    expect(new URL(invite).hash).toMatch(/^#invite=FIGHT1\./);
+    await guest.goto(invite);
+    await expect(guest.getByRole('heading', { name: 'Multiplayer lobby' })).toBeVisible();
+    await expect(guest.locator('#setup-form')).toBeHidden();
+    expect(new URL(guest.url()).hash).toBe('');
     await expect(guest.locator('#pairing-code')).toHaveValue(/^FIGHT1\./);
     const reply = await guest.locator('#pairing-code').inputValue();
     await host.locator('#reply-input').fill(invite);

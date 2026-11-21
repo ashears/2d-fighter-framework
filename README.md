@@ -38,7 +38,7 @@ Health matches end after two round wins or three rounds, with timeout decisions 
 
 ## Direct rooms on static sites
 
-`@ashears/fighter-direct` runs the room in the host browser. Pass the same game registry you would use with the relay into `DirectRoomConnection`. Its `invite`, `reply`, and `accept` methods handle the manual handshake. The host runs the simulation and sends snapshots over an ordered WebRTC data channel. The demo can be built and deployed to any static HTTPS host without room endpoint variables.
+`@ashears/fighter-direct` runs the room in the host browser. Pass the same game registry you would use with the relay into `DirectRoomConnection`. The demo uses `createInviteLink` and `readInviteLink` to open the lobby from a shared URL. The guest sends their reply code back to the host to complete the handshake. The host runs the simulation and sends snapshots over an ordered WebRTC data channel. See the [direct-room integration guide](packages/direct/README.md) for the full flow.
 
 The browser uses local network candidates and no STUN, TURN, or signaling service. Test on the same Wi-Fi first. Guest Wi-Fi isolation and NAT on different networks can prevent a direct connection. Keep the host page open while playing.
 

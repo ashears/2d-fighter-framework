@@ -3,8 +3,10 @@ import type { ClientMessage, ServerMessage } from '@ashears/fighter-relay/protoc
 import type { Json, Seat } from '@ashears/2d-fighter-framework';
 import { DirectHost } from './room.js';
 import type { DirectGame } from './room.js';
+import { readInviteLink } from './invite-link.js';
 
 export type { DirectGame } from './room.js';
+export { copyInviteLink, createInviteLink, readInviteLink } from './invite-link.js';
 
 const prefix = 'FIGHT1.';
 const channelLabel = 'fighter-room';
@@ -30,7 +32,6 @@ export function supportsDirectRooms() {
 
 function readCode(raw: string, expected: Code['type'], game: string): Code {
   const code = raw.trim();
-  const label = expected === 'offer' ? 'invite' : 'reply';
   if (code.length <= maxCode && code.startsWith(prefix)) {
     try {
       const data: Code = JSON.parse(atob(code.slice(prefix.length)));
@@ -41,7 +42,7 @@ function readCode(raw: string, expected: Code['type'], game: string): Code {
       if (error instanceof Error && error.message === 'Use a code from the same game.') throw error;
     }
   }
-  throw new Error(`Paste the full ${label} code from the other player.`);
+  throw new Error(expected === 'offer' ? 'Use the full invite link from the host.' : 'Paste the full reply code from the other player.');
 }
 
 function gather(link: Link) {
@@ -104,7 +105,7 @@ export class DirectRoomConnection<F extends string, S extends string, R extends 
   }
 
   async reply(invite: string) {
-    const offer = readCode(invite, 'offer', this.game.id);
+    const offer = readCode(readInviteLink(invite.trim()) ?? invite, 'offer', this.game.id);
     const link = this.open('guest', offer.ticket);
     link.peer.addEventListener('datachannel', ({ channel }) => this.attach(link, channel), { once: true });
     try {

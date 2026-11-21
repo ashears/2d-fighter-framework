@@ -23,7 +23,7 @@ try {
 import { Button, createMatch, healthRules, TICK_RATE } from '@ashears/2d-fighter-framework';
 import type { FighterDefinition, MatchDefinition } from '@ashears/2d-fighter-framework';
 import { createRoomServer } from '@ashears/fighter-relay';
-import { DirectRoomConnection, supportsDirectRooms } from '@ashears/fighter-direct';
+import { createInviteLink, DirectRoomConnection, readInviteLink, supportsDirectRooms } from '@ashears/fighter-direct';
 import type { RoomGame } from '@ashears/fighter-relay';
 import { decodeClientMessage, encodeMessage } from '@ashears/fighter-relay/protocol';
 import type { ClientMessage } from '@ashears/fighter-relay/protocol';
@@ -57,6 +57,7 @@ const message: ClientMessage = { type: 'create', stage: 'test', rule: 'health' }
 if (decodeClientMessage(encodeMessage(message))?.type !== 'create') throw new Error('Invalid packed room protocol');
 const direct = new DirectRoomConnection({ id: 'sample', ...game }, () => {}, () => {});
 if (supportsDirectRooms()) throw new Error('Expected the browser-only capability to be absent in Node');
+if (readInviteLink(createInviteLink('https://example.com/game/', 'sample-offer')) !== 'sample-offer') throw new Error('Invalid packed invite link');
 direct.close();
 const relay = createRoomServer({ game });
 try {

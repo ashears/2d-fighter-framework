@@ -1,6 +1,6 @@
 {
   "name": "@ashears/fighter-direct",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Serverless browser rooms for the 2D Fighter Framework",
   "license": "MIT",
   "type": "module",

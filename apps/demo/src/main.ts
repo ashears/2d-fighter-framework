@@ -3,7 +3,7 @@ import { createMatch, SNAPSHOT_VERSION, TICK_RATE } from '@ashears/2d-fighter-fr
 import type { GameEvent, MatchDefinition, ReadonlyDeep, Seat, Snapshot } from '@ashears/2d-fighter-framework';
 import { fighterIds, moveTips, referenceConfig, roster, ruleIds, stageIds, stageInfo, supportsMatch } from '@ashears/fighter-reference';
 import type { FighterId, RuleId, StageId } from '@ashears/fighter-reference';
-import { DirectRoomConnection, supportsDirectRooms } from '@ashears/fighter-direct';
+import { copyInviteLink, createInviteLink, DirectRoomConnection, readInviteLink, supportsDirectRooms } from '@ashears/fighter-direct';
 import type { RoomView, ServerMessage } from '@ashears/fighter-relay/protocol';
 import { Controls } from './input';
 import { OfflineFight, OnlineFight, randomSeed, readReplay, storeReplay } from './session';
@@ -98,7 +98,7 @@ function updateMode() {
   byId('setup-moves').hidden = mode === 'online';
   byId('opponent-label').textContent = mode === 'local' ? 'Player two' : mode === 'training' ? 'Training dummy' : 'CPU fighter';
   startButton.replaceChildren(document.createTextNode(
-    mode === 'online' ? 'Create invite' : mode === 'training' ? 'Start training' : 'Start fight',
+    mode === 'online' ? 'Copy invite link' : mode === 'training' ? 'Start training' : 'Start fight',
   ));
   const arrow = document.createElement('span');
   arrow.setAttribute('aria-hidden', 'true');
@@ -489,14 +489,17 @@ async function startPairing(kind: 'invite' | 'reply', createCode: () => Promise<
   try {
     const code = await createCode();
     if (attempt !== pairingAttempt || pairingView.hidden) return;
-    pairingCode.value = code;
-    byId('pairing-code-label').textContent = kind === 'invite' ? 'Invite code' : 'Reply code';
+    const share = kind === 'invite' ? createInviteLink(location.href, code) : code;
+    pairingCode.value = share;
+    byId('pairing-code-label').textContent = kind === 'invite' ? 'Invite link' : 'Reply code';
+    byId('copy-code').textContent = kind === 'invite' ? 'Copy invite link' : 'Copy reply code';
     byId('pairing-hint').textContent = kind === 'invite'
-      ? 'Send this invite to your friend. Paste the reply they send back.'
-      : 'Send this reply back to your friend. Keep this page open while they connect.';
+      ? 'Send the link to your friend and keep this tab open. Paste their reply here to connect.'
+      : 'Send your reply code to the host. Keep this tab open while they connect.';
     byId('pairing-share').hidden = false;
     byId('reply-form').hidden = kind !== 'invite';
     setStatus('');
+    return share;
   } catch (error) {
     if (attempt !== pairingAttempt || pairingView.hidden) return;
     backToSetup();
@@ -508,7 +511,13 @@ byId('setup-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const selection = readSetup();
   if (mode === 'online') {
-    void startPairing('invite', () => connection.invite(selection.stage, selection.rule));
+    const link = startPairing('invite', () => connection.invite(selection.stage, selection.rule));
+    const attempt = pairingAttempt;
+    void Promise.all([link, copyInviteLink(link)]).then(([value, copied]) => {
+      if (value && attempt === pairingAttempt && !pairingView.hidden) {
+        setStatus(copied ? 'Invite link copied.' : 'Use Copy invite link to share your room.');
+      }
+    });
   } else startLocal(selection, mode);
 });
 byId('join-form').addEventListener('submit', (event) => {
@@ -539,12 +548,16 @@ roomFighter.addEventListener('change', () => {
 readyButton.addEventListener('click', () => connection.send({ type: 'ready', ready: !room?.players[seat]?.ready }));
 for (const button of document.querySelectorAll('[data-leave-room]')) button.addEventListener('click', stopFight);
 byId('copy-code').addEventListener('click', async () => {
+  const value = pairingCode.value;
+  const label = byId('pairing-code-label').textContent;
   try {
-    await navigator.clipboard.writeText(pairingCode.value);
-    setStatus('Code copied.');
+    await navigator.clipboard.writeText(value);
+    if (!pairingView.hidden && pairingCode.value === value) setStatus(`${label} copied.`);
   } catch {
+    if (pairingView.hidden || pairingCode.value !== value) return;
+    pairingCode.focus();
     pairingCode.select();
-    setStatus('Copy the selected code and send it to your friend.');
+    setStatus('Copy the selected text and send it to your friend.');
   }
 });
 byId('stop').addEventListener('click', stopFight);
@@ -578,4 +591,15 @@ window.addEventListener('pagehide', () => connection.close());
 
 updateMode();
 drawPreview();
+const linkedInvite = readInviteLink(location.href);
+if (linkedInvite !== null) {
+  const page = new URL(location.href);
+  page.hash = '';
+  history.replaceState(history.state, '', page);
+  if (roomsAvailable) {
+    mode = 'online';
+    updateMode();
+    void startPairing('reply', () => connection.reply(linkedInvite));
+  }
+}
 requestAnimationFrame(render);
