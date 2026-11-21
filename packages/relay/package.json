@@ -1,0 +1,23 @@
+{
+  "name": "@ashears/fighter-relay",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "files": ["server.mjs", "server.d.mts", "dist/protocol.js", "dist/protocol.d.ts"],
+  "exports": {
+    ".": {
+      "types": "./server.d.mts",
+      "import": "./server.mjs"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js"
+    }
+  },
+  "dependencies": {
+    "@ashears/2d-fighter-framework": "0.2.0",
+    "ws": "8.21.0"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "2d-fighter-framework-workspace",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build:packages": "tsc -b packages/core packages/relay packages/reference",
+    "typecheck": "npm run build:packages && tsc -p apps/demo --noEmit && node --check packages/relay/server.mjs",
+    "dev": "npm run build:packages && npm run dev -w @ashears/fighter-demo",
+    "rooms": "npm run build:packages && npm run rooms -w @ashears/fighter-demo",
+    "build": "npm run build:packages && npm run build -w @ashears/fighter-demo",
+    "test": "npm run build:packages && node --test tests/*.test.mjs",
+    "test:browser": "npm run build && playwright test",
+    "test:package": "npm run build:packages && node scripts/verify-package.mjs",
+    "release:local": "npm run build && node scripts/package-release.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "22.19.19",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,29 @@
+name: Verify fighter framework
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:package
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm run release:local
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fighter-framework-release
+          path: artifacts/
