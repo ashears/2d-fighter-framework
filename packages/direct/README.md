@@ -2,7 +2,7 @@
 
 `@ashears/fighter-direct` runs a private match in the host browser and uses a WebRTC data channel for input and snapshots. A static site can use it without a signaling server, STUN/TURN, or a running WebSocket service.
 
-Pass a game ID, fighter IDs, arena IDs, rule IDs, and a match configuration factory to `DirectRoomConnection`. Its second argument receives room and match messages from the shared protocol. Its third argument receives connection failures.
+Pass a game ID, fighter IDs, arena IDs, rule IDs, and a match configuration factory to `DirectRoomConnection`. Its second argument receives room and match messages from the shared protocol. Its third argument receives connection failures. The optional fourth argument accepts WebRTC ICE servers. Add STUN for public address discovery and TURN to relay traffic when a direct route is blocked.
 
 1. The host calls `invite(stage, rule)` and shares the resulting string.
 2. The guest calls `reply(invite)` and returns the resulting string.

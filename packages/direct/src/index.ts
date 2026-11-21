@@ -10,6 +10,7 @@ const prefix = 'FIGHT1.';
 const channelLabel = 'fighter-room';
 const maxCode = 24_000;
 const maxBuffered = 256 * 1024;
+const connectionFailure = 'The browsers could not connect on these networks. Create a new invite to retry.';
 type Code = { game: string; ticket: string; type: 'offer' | 'answer'; sdp: string };
 
 interface Link {
@@ -64,7 +65,8 @@ function gather(link: Link) {
     };
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error('The browser could not prepare a direct connection.'));
+      // A blocked ICE server can keep gathering open after usable candidates arrive.
+      resolve();
     }, 8000);
     peer.addEventListener('icegatheringstatechange', onChange);
     abort.signal.addEventListener('abort', onAbort, { once: true });
@@ -78,6 +80,7 @@ export class DirectRoomConnection<F extends string, S extends string, R extends 
     private game: DirectGame<F, S, R, State>,
     private receive: (message: ServerMessage) => void,
     private disconnected: (detail: string) => void,
+    private iceServers: RTCIceServer[] = [],
   ) {}
 
   async invite(stageId: string, ruleId: string) {
@@ -121,7 +124,7 @@ export class DirectRoomConnection<F extends string, S extends string, R extends 
     if (answer.ticket !== link.ticket) throw new Error('That reply belongs to a different invite.');
     await link.peer.setRemoteDescription({ type: answer.type, sdp: answer.sdp });
     if (this.link === link && !link.connected) {
-      this.setDeadline(link, 15_000, 'No direct route was found. Try the same Wi-Fi or another local network.');
+      this.setDeadline(link, 15_000, connectionFailure);
     }
   }
 
@@ -151,13 +154,13 @@ export class DirectRoomConnection<F extends string, S extends string, R extends 
   private open(role: Link['role'], ticket: string): Link {
     if (!supportsDirectRooms()) throw new Error('This browser does not support direct rooms.');
     this.close();
-    const peer = new RTCPeerConnection({ iceServers: [] });
+    const peer = new RTCPeerConnection({ iceServers: this.iceServers });
     const link: Link = { peer, abort: new AbortController(), role, ticket, connected: false };
     this.link = link;
     peer.addEventListener('connectionstatechange', () => {
       if (this.link !== link) return;
       if (peer.connectionState === 'failed' || peer.connectionState === 'closed') {
-        this.fail(link, link.connected ? 'Your opponent left the room.' : 'No direct route was found. Try the same Wi-Fi or another local network.');
+        this.fail(link, link.connected ? 'Your opponent left the room.' : connectionFailure);
       } else if (peer.connectionState === 'disconnected' && link.connected) {
         this.setDeadline(link, 4500, 'Your opponent left the room.');
       } else if (peer.connectionState === 'connected' && link.connected) {
